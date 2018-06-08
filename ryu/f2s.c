@@ -356,16 +356,3 @@ int f2s_buffered_n(float f, char* result) {
   const floating_decimal_32 v = f2d(ieeeMantissa, ieeeExponent);
   return to_chars(v, ieeeSign, result);
 }
-
-void f2s_buffered(float f, char* result) {
-  const int index = f2s_buffered_n(f, result);
-
-  // Terminate the string.
-  result[index] = '\0';
-}
-
-char* f2s(float f) {
-  char* const result = (char*) malloc(16);
-  f2s_buffered(f, result);
-  return result;
-}

@@ -500,16 +500,3 @@ int d2s_buffered_n(double f, char* result) {
 
   return to_chars(v, ieeeSign, result);
 }
-
-void d2s_buffered(double f, char* result) {
-  const int index = d2s_buffered_n(f, result);
-
-  // Terminate the string.
-  result[index] = '\0';
-}
-
-char* d2s(double f) {
-  char* const result = (char*) malloc(25);
-  d2s_buffered(f, result);
-  return result;
-}
