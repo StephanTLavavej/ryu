@@ -15,13 +15,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-// Runtime compiler options:
-// -DRYU_OPTIMIZE_SIZE Use smaller lookup tables. Instead of storing every
-//     required power of 5, only store every 26th entry, and compute
-//     intermediate values with a multiplication. This reduces the lookup table
-//     size by about 10x (only one case, and only double) at the cost of some
-//     performance. Currently requires MSVC intrinsics.
-
 #include "ryu/ryu.h"
 
 #include <assert.h>
@@ -232,13 +225,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     e10 = (int32_t) q;
     const int32_t k = DOUBLE_POW5_INV_BITCOUNT + pow5bits((int32_t) q) - 1;
     const int32_t i = -e2 + (int32_t) q + k;
-#if defined(RYU_OPTIMIZE_SIZE)
-    uint64_t pow5[2];
-    double_computeInvPow5(q, pow5);
-    vr = mulShiftAll(m2, pow5, i, &vp, &vm, mmShift);
-#else
     vr = mulShiftAll(m2, DOUBLE_POW5_INV_SPLIT[q], i, &vp, &vm, mmShift);
-#endif
     if (q <= 21) {
       // This should use q <= 22, but I think 21 is also safe. Smaller values
       // may still be safe, but it's more difficult to reason about them.
@@ -263,13 +250,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     const int32_t i = -e2 - (int32_t) q;
     const int32_t k = pow5bits(i) - DOUBLE_POW5_BITCOUNT;
     const int32_t j = (int32_t) q - k;
-#if defined(RYU_OPTIMIZE_SIZE)
-    uint64_t pow5[2];
-    double_computePow5(i, pow5);
-    vr = mulShiftAll(m2, pow5, j, &vp, &vm, mmShift);
-#else
     vr = mulShiftAll(m2, DOUBLE_POW5_SPLIT[i], j, &vp, &vm, mmShift);
-#endif
     if (q <= 1) {
       // {vr,vp,vm} is trailing zeros if {mv,mp,mm} has at least q trailing 0 bits.
       // mv = 4 * m2, so it always has at least two trailing 0 bits.

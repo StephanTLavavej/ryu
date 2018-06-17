@@ -35,9 +35,8 @@ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const
   // For the __shiftright128 intrinsic, the shift value is always
   // modulo 64.
   // In the current implementation of the double-precision version
-  // of Ryu, the shift value is always < 64. (In the case
-  // RYU_OPTIMIZE_SIZE == 0, the shift value is in the range [49, 58].
-  // Otherwise in the range [2, 59].)
+  // of Ryu, the shift value is always < 64.
+  // (The shift value is in the range [49, 58].)
   // Check this here in case a future change requires larger shift
   // values. In this case this function needs to be adjusted.
   assert(dist < 64);
@@ -79,7 +78,7 @@ static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* con
 static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
   // We don't need to handle the case dist >= 64 here (see above).
   assert(dist < 64);
-#if defined(RYU_OPTIMIZE_SIZE) || !defined(RYU_32_BIT_PLATFORM)
+#if !defined(RYU_32_BIT_PLATFORM)
   assert(dist > 0);
   return (hi << (64 - dist)) | (lo >> dist);
 #else
