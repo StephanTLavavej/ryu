@@ -16,8 +16,6 @@
 // KIND, either express or implied.
 
 // Runtime compiler options:
-// -DRYU_DEBUG Generate verbose debugging output to stdout.
-//
 // -DRYU_ONLY_64_BIT_OPS Avoid using uint128_t or 64-bit intrinsics. Slower,
 //     depending on your compiler.
 //
@@ -30,11 +28,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef RYU_DEBUG
-#include <inttypes.h>
-#include <stdio.h>
-#endif
 
 #if !defined(RYU_ONLY_64_BIT_OPS) && !defined(RYU_AVOID_UINT128) && defined(__SIZEOF_INT128__)
 #define HAS_UINT128
@@ -110,11 +103,6 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
   const uint128_t b0 = ((uint128_t) m) * mul[0]; // 0
   const uint128_t b1 = ((uint128_t) m) * mul[1]; // 64
   const uint128_t b2 = ((uint128_t) m) * mul[2]; // 128
-#ifdef RYU_DEBUG
-  if (j < 128 || j > 180) {
-    printf("%d\n", j);
-  }
-#endif
   assert(j >= 128);
   assert(j <= 180);
   // j: [128, 256)
@@ -172,11 +160,6 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
   const uint64_t s1low = low2 + high1 + c1; // 128
   const uint32_t c2 = s1low < low2; // high1 + c1 can't overflow, so compare against low2
   const uint64_t s1high = high2 + c2;       // 192
-#ifdef RYU_DEBUG
-  if (j < 128 || j > 180) {
-    printf("%d\n", j);
-  }
-#endif
   assert(j >= 128);
   assert(j <= 180);
 #if defined(HAS_64_BIT_INTRINSICS)
@@ -200,10 +183,6 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
 #endif // HAS_UINT128
 
 static inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {
-#ifdef RYU_DEBUG
-  printf("DIGITS=%u\n", digits);
-#endif
-
   uint32_t i = 0;
   while (digits >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
@@ -233,10 +212,6 @@ static inline void append_n_digits(const uint32_t olength, uint32_t digits, char
 }
 
 static inline void append_d_digits(const uint32_t olength, uint32_t digits, char* const result) {
-#ifdef RYU_DEBUG
-  printf("DIGITS=%u\n", digits);
-#endif
-
   uint32_t i = 0;
   while (digits >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
@@ -269,9 +244,6 @@ static inline void append_d_digits(const uint32_t olength, uint32_t digits, char
 }
 
 static inline void append_c_digits(const uint32_t count, uint32_t digits, char* const result) {
-#ifdef RYU_DEBUG
-  printf("DIGITS=%u\n", digits);
-#endif
   uint32_t i = 0;
   for (; i < count - 1; i += 2) {
     const uint32_t c = (digits % 100) << 1;
@@ -285,9 +257,6 @@ static inline void append_c_digits(const uint32_t count, uint32_t digits, char* 
 }
 
 static inline void append_nine_digits(uint32_t digits, char* const result) {
-#ifdef RYU_DEBUG
-  printf("DIGITS=%u\n", digits);
-#endif
   if (digits == 0) {
     memset(result, '0', 9);
     return;
@@ -341,13 +310,6 @@ static inline int copy_special_str_printf(char* const result, const bool sign, c
 
 int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
   const uint64_t bits = double_to_bits(d);
-#ifdef RYU_DEBUG
-  printf("IN=");
-  for (int32_t bit = 63; bit >= 0; --bit) {
-    printf("%d", (int) ((bits >> bit) & 1));
-  }
-  printf("\n");
-#endif
 
   // Decode bits into sign, mantissa, and exponent.
   const bool ieeeSign = ((bits >> (DOUBLE_MANTISSA_BITS + DOUBLE_EXPONENT_BITS)) & 1) != 0;
@@ -382,10 +344,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
     m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   }
 
-#ifdef RYU_DEBUG
-  printf("-> %" PRIu64 " * 2^%d\n", m2, e2);
-#endif
-
   int index = 0;
   bool nonzero = false;
   if (ieeeSign) {
@@ -395,10 +353,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
     const uint32_t idx = e2 < 0 ? 0 : indexForExponent((uint32_t) e2);
     const uint32_t p10bits = pow10BitsForIndex(idx);
     const int32_t len = (int32_t) lengthForIndex(idx);
-#ifdef RYU_DEBUG
-    printf("idx=%u\n", idx);
-    printf("len=%d\n", len);
-#endif
     for (int32_t i = len - 1; i >= 0; --i) {
       const uint32_t j = p10bits - e2;
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
@@ -421,14 +375,8 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
   if (precision > 0) {
     result[index++] = '.';
   }
-#ifdef RYU_DEBUG
-  printf("e2=%d\n", e2);
-#endif
   if (e2 < 0) {
     const int32_t idx = -e2 / 16;
-#ifdef RYU_DEBUG
-    printf("idx=%d\n", idx);
-#endif
     const uint32_t blocks = precision / 9 + 1;
     // 0 = don't round up; 1 = round up unconditionally; 2 = round up if odd.
     int roundUp = 0;
@@ -456,9 +404,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in mulShift_mod1e9. Instead, we can just increase the multipliers.
       uint32_t digits = mulShift_mod1e9(m2 << 8, POW10_SPLIT_2[p], j + 8);
-#ifdef RYU_DEBUG
-      printf("digits=%u\n", digits);
-#endif
       if (i < blocks - 1) {
         append_nine_digits(digits, result + index);
         index += 9;
@@ -469,9 +414,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
           lastDigit = digits % 10;
           digits /= 10;
         }
-#ifdef RYU_DEBUG
-        printf("lastDigit=%u\n", lastDigit);
-#endif
         if (lastDigit != 5) {
           roundUp = lastDigit > 5;
         } else {
@@ -480,10 +422,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
           const bool trailingZeros = requiredTwos <= 0
             || (requiredTwos < 60 && multipleOfPowerOf2(m2, (uint32_t) requiredTwos));
           roundUp = trailingZeros ? 2 : 1;
-#ifdef RYU_DEBUG
-          printf("requiredTwos=%d\n", requiredTwos);
-          printf("trailingZeros=%s\n", trailingZeros ? "true" : "false");
-#endif
         }
         if (maximum > 0) {
           append_c_digits(maximum, digits, result + index);
@@ -492,9 +430,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
         break;
       }
     }
-#ifdef RYU_DEBUG
-    printf("roundUp=%d\n", roundUp);
-#endif
     if (roundUp != 0) {
       int roundIndex = index;
       int dotIndex = 0; // '.' can't be located at index 0
@@ -549,13 +484,6 @@ char* d2fixed(double d, uint32_t precision) {
 
 int d2exp_buffered_n(double d, uint32_t precision, char* result) {
   const uint64_t bits = double_to_bits(d);
-#ifdef RYU_DEBUG
-  printf("IN=");
-  for (int32_t bit = 63; bit >= 0; --bit) {
-    printf("%d", (int) ((bits >> bit) & 1));
-  }
-  printf("\n");
-#endif
 
   // Decode bits into sign, mantissa, and exponent.
   const bool ieeeSign = ((bits >> (DOUBLE_MANTISSA_BITS + DOUBLE_EXPONENT_BITS)) & 1) != 0;
@@ -592,10 +520,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
     m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   }
 
-#ifdef RYU_DEBUG
-  printf("-> %" PRIu64 " * 2^%d\n", m2, e2);
-#endif
-
   const bool printDecimalPoint = precision > 0;
   ++precision;
   int index = 0;
@@ -610,10 +534,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
     const uint32_t idx = e2 < 0 ? 0 : indexForExponent((uint32_t) e2);
     const uint32_t p10bits = pow10BitsForIndex(idx);
     const int32_t len = (int32_t) lengthForIndex(idx);
-#ifdef RYU_DEBUG
-    printf("idx=%u\n", idx);
-    printf("len=%d\n", len);
-#endif
     for (int32_t i = len - 1; i >= 0; --i) {
       const uint32_t j = p10bits - e2;
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
@@ -647,19 +567,12 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
 
   if (e2 < 0 && availableDigits == 0) {
     const int32_t idx = -e2 / 16;
-#ifdef RYU_DEBUG
-    printf("idx=%d, e2=%d, min=%d\n", idx, e2, MIN_BLOCK_2[idx]);
-#endif
     for (int32_t i = MIN_BLOCK_2[idx]; i < 200; ++i) {
       const int32_t j = ADDITIONAL_BITS_2 + (-e2 - 16 * idx);
       const uint32_t p = POW10_OFFSET_2[idx] + (uint32_t) i - MIN_BLOCK_2[idx];
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in mulShift_mod1e9. Instead, we can just increase the multipliers.
       digits = (p >= POW10_OFFSET_2[idx + 1]) ? 0 : mulShift_mod1e9(m2 << 8, POW10_SPLIT_2[p], j + 8);
-#ifdef RYU_DEBUG
-      printf("exact=%" PRIu64 " * (%" PRIu64 " + %" PRIu64 " << 64) >> %d\n", m2, POW10_SPLIT_2[p][0], POW10_SPLIT_2[p][1], j);
-      printf("digits=%u\n", digits);
-#endif
       if (printedDigits != 0) {
         if (printedDigits + 9 > precision) {
           availableDigits = 9;
@@ -687,11 +600,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
   }
 
   const uint32_t maximum = precision - printedDigits;
-#ifdef RYU_DEBUG
-  printf("availableDigits=%u\n", availableDigits);
-  printf("digits=%u\n", digits);
-  printf("maximum=%u\n", maximum);
-#endif
   if (availableDigits == 0) {
     digits = 0;
   }
@@ -702,9 +610,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
       digits /= 10;
     }
   }
-#ifdef RYU_DEBUG
-  printf("lastDigit=%u\n", lastDigit);
-#endif
   // 0 = don't round up; 1 = round up unconditionally; 2 = round up if odd.
   int roundUp = 0;
   if (lastDigit != 5) {
@@ -721,10 +626,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
       trailingZeros = trailingZeros && multipleOfPowerOf5(m2, (uint32_t) requiredFives);
     }
     roundUp = trailingZeros ? 2 : 1;
-#ifdef RYU_DEBUG
-    printf("requiredTwos=%d\n", requiredTwos);
-    printf("trailingZeros=%s\n", trailingZeros ? "true" : "false");
-#endif
   }
   if (printedDigits != 0) {
     if (digits == 0) {
@@ -741,9 +642,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
       result[index++] = (char) ('0' + digits);
     }
   }
-#ifdef RYU_DEBUG
-  printf("roundUp=%d\n", roundUp);
-#endif
   if (roundUp != 0) {
     int roundIndex = index;
     while (true) {
