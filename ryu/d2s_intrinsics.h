@@ -14,18 +14,8 @@
 // Unless required by applicable law or agreed to in writing, this software
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
-#ifndef RYU_D2S_INTRINSICS_H
-#define RYU_D2S_INTRINSICS_H
-
-#include <assert.h>
-#include <stdint.h>
-
-// This sets RYU_32_BIT_PLATFORM as a side effect if applicable.
-#include "ryu/common.h"
 
 #if defined(HAS_64_BIT_INTRINSICS)
-
-#include <intrin.h>
 
 static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
   return _umul128(a, b, productHi);
@@ -205,5 +195,3 @@ static inline bool multipleOfPowerOf2(const uint64_t value, const uint32_t p) {
   // return __builtin_ctzll(value) >= p;
   return (value & ((1ull << p) - 1)) == 0;
 }
-
-#endif // RYU_D2S_INTRINSICS_H

@@ -15,22 +15,9 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include "ryu/ryu2.h"
-
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #if defined(_M_X64)
 #define HAS_64_BIT_INTRINSICS
 #endif
-
-#include "ryu/common.h"
-#include "ryu/digit_table.h"
-#include "ryu/d2fixed_full_table.h"
-#include "ryu/d2s_intrinsics.h"
 
 #define DOUBLE_MANTISSA_BITS 52
 #define DOUBLE_EXPONENT_BITS 11

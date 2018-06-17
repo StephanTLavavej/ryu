@@ -14,10 +14,6 @@
 // Unless required by applicable law or agreed to in writing, this software
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
-#ifndef RYU_D2FIXED_FULL_TABLE_H
-#define RYU_D2FIXED_FULL_TABLE_H
-
-#include <stdint.h>
 
 #define TABLE_SIZE 64
 
@@ -4416,5 +4412,3 @@ static const uint64_t POW10_SPLIT_2[3133][3] = {
   {                    0u,                    0u,         241525390625u },
   {                    0u,                    0u,          33000000000u },
 };
-
-#endif // RYU_D2FIXED_FULL_TABLE_H

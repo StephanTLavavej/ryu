@@ -14,12 +14,6 @@
 // Unless required by applicable law or agreed to in writing, this software
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
-#ifndef RYU_COMMON_H
-#define RYU_COMMON_H
-
-#include <assert.h>
-#include <stdint.h>
-#include <string.h>
 
 #if defined(_M_IX86) || defined(_M_ARM)
 #define RYU_32_BIT_PLATFORM
@@ -94,5 +88,3 @@ static inline uint64_t double_to_bits(const double d) {
   memcpy(&bits, &d, sizeof(double));
   return bits;
 }
-
-#endif // RYU_COMMON_H

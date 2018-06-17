@@ -14,8 +14,6 @@
 // Unless required by applicable law or agreed to in writing, this software
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
-#ifndef RYU_DIGIT_TABLE_H
-#define RYU_DIGIT_TABLE_H
 
 // A table of all two-digit numbers. This is used to speed up decimal digit
 // generation by copying pairs of digits into the final output.
@@ -31,5 +29,3 @@ static const char DIGIT_TABLE[200] = {
   '8','0','8','1','8','2','8','3','8','4','8','5','8','6','8','7','8','8','8','9',
   '9','0','9','1','9','2','9','3','9','4','9','5','9','6','9','7','9','8','9','9'
 };
-
-#endif // RYU_DIGIT_TABLE_H

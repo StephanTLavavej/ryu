@@ -15,22 +15,9 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include "ryu/ryu.h"
-
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #if defined(_M_X64)
 #define HAS_64_BIT_INTRINSICS
 #endif
-
-#include "ryu/common.h"
-#include "ryu/digit_table.h"
-#include "ryu/d2s.h"
-#include "ryu/d2s_intrinsics.h"
 
 // We need a 64x128-bit multiplication and a subsequent 128-bit shift.
 // Multiplication:

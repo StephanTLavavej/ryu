@@ -15,18 +15,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include "ryu/ryu.h"
-
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-
-#include "ryu/common.h"
-#include "ryu/digit_table.h"
-
 #define FLOAT_MANTISSA_BITS 23
 #define FLOAT_EXPONENT_BITS 8
 #define FLOAT_BIAS 127

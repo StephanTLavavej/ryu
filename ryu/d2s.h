@@ -14,16 +14,6 @@
 // Unless required by applicable law or agreed to in writing, this software
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
-#ifndef RYU_D2S_H
-#define RYU_D2S_H
-
-#include <assert.h>
-#include <stdint.h>
-
-#include "ryu/common.h"
-#include "ryu/d2s_full_table.h"
-
-#include "ryu/d2s_intrinsics.h"
 
 #define DOUBLE_MANTISSA_BITS 52
 #define DOUBLE_EXPONENT_BITS 11
@@ -31,5 +21,3 @@
 
 #define DOUBLE_POW5_INV_BITCOUNT 122
 #define DOUBLE_POW5_BITCOUNT 121
-
-#endif // RYU_D2S_H
