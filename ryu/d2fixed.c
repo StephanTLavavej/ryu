@@ -16,9 +16,6 @@
 // KIND, either express or implied.
 
 // Runtime compiler options:
-// -DRYU_ONLY_64_BIT_OPS Avoid using uint128_t or 64-bit intrinsics. Slower,
-//     depending on your compiler.
-//
 // -DRYU_AVOID_UINT128 Avoid using uint128_t. Slower, depending on your compiler.
 
 #include "ryu/ryu2.h"
@@ -29,10 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(RYU_ONLY_64_BIT_OPS) && !defined(RYU_AVOID_UINT128) && defined(__SIZEOF_INT128__)
+#if !defined(RYU_AVOID_UINT128) && defined(__SIZEOF_INT128__)
 #define HAS_UINT128
 typedef __uint128_t uint128_t;
-#elif !defined(RYU_ONLY_64_BIT_OPS) && defined(_MSC_VER) && defined(_M_X64)
+#elif defined(_MSC_VER) && defined(_M_X64)
 #define HAS_64_BIT_INTRINSICS
 #endif
 
