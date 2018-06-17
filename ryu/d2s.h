@@ -23,11 +23,7 @@
 #include "ryu/common.h"
 #include "ryu/d2s_full_table.h"
 
-#if defined(HAS_UINT128)
-typedef __uint128_t uint128_t;
-#else
 #include "ryu/d2s_intrinsics.h"
-#endif
 
 #define DOUBLE_MANTISSA_BITS 52
 #define DOUBLE_EXPONENT_BITS 11

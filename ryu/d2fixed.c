@@ -15,9 +15,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-// Runtime compiler options:
-// -DRYU_AVOID_UINT128 Avoid using uint128_t. Slower, depending on your compiler.
-
 #include "ryu/ryu2.h"
 
 #include <assert.h>
@@ -26,10 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(RYU_AVOID_UINT128) && defined(__SIZEOF_INT128__)
-#define HAS_UINT128
-typedef __uint128_t uint128_t;
-#elif defined(_MSC_VER) && defined(_M_X64)
+#if defined(_M_X64)
 #define HAS_64_BIT_INTRINSICS
 #endif
 
@@ -43,72 +37,6 @@ typedef __uint128_t uint128_t;
 #define DOUBLE_BIAS 1023
 
 #define POW10_ADDITIONAL_BITS 120
-
-#if defined(HAS_UINT128)
-static inline uint128_t umul256(const uint128_t a, const uint64_t bHi, const uint64_t bLo, uint128_t* const productHi) {
-  const uint64_t aLo = (uint64_t)a;
-  const uint64_t aHi = (uint64_t)(a >> 64);
-
-  const uint128_t b00 = (uint128_t)aLo * bLo;
-  const uint128_t b01 = (uint128_t)aLo * bHi;
-  const uint128_t b10 = (uint128_t)aHi * bLo;
-  const uint128_t b11 = (uint128_t)aHi * bHi;
-
-  const uint64_t b00Lo = (uint64_t)b00;
-  const uint64_t b00Hi = (uint64_t)(b00 >> 64);
-
-  const uint128_t mid1 = b10 + b00Hi;
-  const uint64_t mid1Lo = (uint64_t)(mid1);
-  const uint64_t mid1Hi = (uint64_t)(mid1 >> 64);
-
-  const uint128_t mid2 = b01 + mid1Lo;
-  const uint64_t mid2Lo = (uint64_t)(mid2);
-  const uint64_t mid2Hi = (uint64_t)(mid2 >> 64);
-
-  const uint128_t pHi = b11 + mid1Hi + mid2Hi;
-  const uint128_t pLo = ((uint128_t)mid2Lo << 64) | b00Lo;
-
-  *productHi = pHi;
-  return pLo;
-}
-
-// Returns the high 128 bits of the 256-bit product of a and b.
-static inline uint128_t umul256_hi(const uint128_t a, const uint64_t bHi, const uint64_t bLo) {
-  // Reuse the umul256 implementation.
-  // Optimizers will likely eliminate the instructions used to compute the
-  // low part of the product.
-  uint128_t hi;
-  umul256(a, bHi, bLo, &hi);
-  return hi;
-}
-
-// Unfortunately, gcc/clang do not automatically turn a 128-bit integer division
-// into a multiplication, so we have to do it manually.
-static inline uint32_t uint128_mod1e9(const uint128_t v) {
-  // After multiplying, we're going to shift right by 29, then truncate to uint32_t.
-  // This means that we need only 29 + 32 = 61 bits, so we can truncate to uint64_t before shifting.
-  const uint64_t multiplied = (uint64_t) umul256_hi(v, 0x89705F4136B4A597u, 0x31680A88F8953031u);
-
-  // For uint32_t truncation, see the mod1e9() comment in d2s_intrinsics.h.
-  const uint32_t shifted = (uint32_t) (multiplied >> 29);
-
-  return ((uint32_t) v) - 1000000000 * shifted;
-}
-
-// Best case: use 128-bit type.
-static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const mul, const int32_t j) {
-  const uint128_t b0 = ((uint128_t) m) * mul[0]; // 0
-  const uint128_t b1 = ((uint128_t) m) * mul[1]; // 64
-  const uint128_t b2 = ((uint128_t) m) * mul[2]; // 128
-  assert(j >= 128);
-  assert(j <= 180);
-  // j: [128, 256)
-  const uint128_t mid = b1 + (uint64_t) (b0 >> 64); // 64
-  const uint128_t s1 = b2 + (uint64_t) (mid >> 64); // 128
-  return uint128_mod1e9(s1 >> (j - 128));
-}
-
-#else // HAS_UINT128
 
 #if defined(HAS_64_BIT_INTRINSICS)
 // Returns the low 64 bits of the high 128 bits of the 256-bit product of a and b.
@@ -177,7 +105,6 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
   }
 #endif // HAS_64_BIT_INTRINSICS
 }
-#endif // HAS_UINT128
 
 static inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {
   uint32_t i = 0;

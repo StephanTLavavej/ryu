@@ -85,8 +85,6 @@ static inline bool multipleOfPowerOf2(const uint32_t value, const uint32_t p) {
   return (value & ((1u << p) - 1)) == 0;
 }
 
-// It seems to be slightly faster to avoid uint128_t here, although the
-// generated code for uint128_t looks slightly nicer.
 static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const int32_t shift) {
   assert(shift > 32);
 
