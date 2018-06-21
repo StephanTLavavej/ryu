@@ -15,7 +15,7 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#define TABLE_SIZE 64
+inline constexpr int TABLE_SIZE = 64;
 
 inline constexpr uint16_t POW10_OFFSET[TABLE_SIZE] = {
   0, 2, 5, 8, 12, 16, 21, 26, 32, 39,
@@ -1254,8 +1254,8 @@ inline constexpr uint64_t POW10_SPLIT[1224][3] = {
   {  8310173728816391804u,               197658u,                    0u },
 };
 
-#define TABLE_SIZE_2 69
-#define ADDITIONAL_BITS_2 120
+inline constexpr int TABLE_SIZE_2 = 69;
+inline constexpr int ADDITIONAL_BITS_2 = 120;
 
 inline constexpr uint16_t POW10_OFFSET_2[TABLE_SIZE_2] = {
      0,    2,    6,   12,   20,   29,   40,   52,   66,   80,

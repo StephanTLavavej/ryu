@@ -19,11 +19,7 @@
 #define HAS_64_BIT_INTRINSICS
 #endif
 
-#define DOUBLE_MANTISSA_BITS 52
-#define DOUBLE_EXPONENT_BITS 11
-#define DOUBLE_BIAS 1023
-
-#define POW10_ADDITIONAL_BITS 120
+inline constexpr int POW10_ADDITIONAL_BITS = 120;
 
 #if defined(HAS_64_BIT_INTRINSICS)
 // Returns the low 64 bits of the high 128 bits of the 256-bit product of a and b.
