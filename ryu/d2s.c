@@ -58,12 +58,12 @@
 //       results are not perfectly aligned.
 #if defined(HAS_64_BIT_INTRINSICS)
 
-static inline uint64_t mulShift(const uint64_t m, const uint64_t* const mul, const int32_t j) {
+_NODISCARD inline uint64_t mulShift(const uint64_t m, const uint64_t* const mul, const int32_t j) {
   // m is maximum 55 bits
   uint64_t high1;                                   // 128
   const uint64_t low1 = umul128(m, mul[1], &high1); // 64
   uint64_t high0;                                   // 64
-  umul128(m, mul[0], &high0);                       // 0
+  (void) umul128(m, mul[0], &high0);                // 0
   const uint64_t sum = high0 + low1;
   if (sum < high0) {
     ++high1; // overflow into high1
@@ -71,7 +71,7 @@ static inline uint64_t mulShift(const uint64_t m, const uint64_t* const mul, con
   return shiftright128(sum, high1, j - 64);
 }
 
-static inline uint64_t mulShiftAll(const uint64_t m, const uint64_t* const mul, const int32_t j,
+_NODISCARD inline uint64_t mulShiftAll(const uint64_t m, const uint64_t* const mul, const int32_t j,
   uint64_t* const vp, uint64_t* const vm, const uint32_t mmShift) {
   *vp = mulShift(4 * m + 2, mul, j);
   *vm = mulShift(4 * m - 1 - mmShift, mul, j);
@@ -80,7 +80,7 @@ static inline uint64_t mulShiftAll(const uint64_t m, const uint64_t* const mul, 
 
 #else // HAS_64_BIT_INTRINSICS
 
-static __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const int32_t j,
+_NODISCARD __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const int32_t j,
   uint64_t* const vp, uint64_t* const vm, const uint32_t mmShift) { // TRANSITION, VSO#634761
   m <<= 1;
   // m is maximum 55 bits
@@ -115,7 +115,7 @@ static __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul,
 
 #endif // HAS_64_BIT_INTRINSICS
 
-static inline uint32_t decimalLength17(const uint64_t v) {
+_NODISCARD inline uint32_t decimalLength17(const uint64_t v) {
   // This is slightly faster than a loop.
   // The average output length is 16.38 digits, so we check high-to-low.
   // Function precondition: v is not an 18, 19, or 20-digit number.
@@ -146,7 +146,7 @@ struct floating_decimal_64 {
   int32_t exponent;
 };
 
-static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_t ieeeExponent) {
+_NODISCARD inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_t ieeeExponent) {
   int32_t e2;
   uint64_t m2;
   if (ieeeExponent == 0) {
@@ -318,7 +318,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
   return fd;
 }
 
-static inline int to_chars(const floating_decimal_64 v, char* const result) {
+_NODISCARD inline int to_chars(const floating_decimal_64 v, char* const result) {
   // Step 5: Print the decimal representation.
   uint64_t output = v.mantissa;
   const uint32_t olength = decimalLength17(output);
@@ -409,7 +409,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
   return index;
 }
 
-static inline bool d2d_small_int(const uint64_t ieeeMantissa, const uint32_t ieeeExponent,
+_NODISCARD inline bool d2d_small_int(const uint64_t ieeeMantissa, const uint32_t ieeeExponent,
   floating_decimal_64* const v) {
   const uint64_t m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   const int32_t e2 = static_cast<int32_t>(ieeeExponent) - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
@@ -441,7 +441,7 @@ static inline bool d2d_small_int(const uint64_t ieeeMantissa, const uint32_t iee
   return true;
 }
 
-int d2s_buffered_n(const double f, char* const result) {
+_NODISCARD inline int d2s_buffered_n(const double f, char* const result) {
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint64_t bits = double_to_bits(f);
 

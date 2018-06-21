@@ -47,7 +47,7 @@ inline constexpr uint64_t FLOAT_POW5_SPLIT[47] = {
   1292469707114105741u, 1615587133892632177u, 2019483917365790221u
 };
 
-static inline uint32_t pow5Factor(uint32_t value) {
+_NODISCARD inline uint32_t pow5Factor(uint32_t value) {
   uint32_t count = 0;
   for (;;) {
     assert(value != 0);
@@ -63,17 +63,17 @@ static inline uint32_t pow5Factor(uint32_t value) {
 }
 
 // Returns true if value is divisible by 5^p.
-static inline bool multipleOfPowerOf5(const uint32_t value, const uint32_t p) {
+_NODISCARD inline bool multipleOfPowerOf5(const uint32_t value, const uint32_t p) {
   return pow5Factor(value) >= p;
 }
 
 // Returns true if value is divisible by 2^p.
-static inline bool multipleOfPowerOf2(const uint32_t value, const uint32_t p) {
+_NODISCARD inline bool multipleOfPowerOf2(const uint32_t value, const uint32_t p) {
   // return __builtin_ctz(value) >= p;
   return (value & ((1u << p) - 1)) == 0;
 }
 
-static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const int32_t shift) {
+_NODISCARD inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const int32_t shift) {
   assert(shift > 32);
 
   // The casts here help MSVC to avoid calls to the __allmul library
@@ -101,11 +101,11 @@ static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const i
 #endif // RYU_32_BIT_PLATFORM
 }
 
-static inline uint32_t mulPow5InvDivPow2(const uint32_t m, const uint32_t q, const int32_t j) {
+_NODISCARD inline uint32_t mulPow5InvDivPow2(const uint32_t m, const uint32_t q, const int32_t j) {
   return mulShift(m, FLOAT_POW5_INV_SPLIT[q], j);
 }
 
-static inline uint32_t mulPow5divPow2(const uint32_t m, const uint32_t i, const int32_t j) {
+_NODISCARD inline uint32_t mulPow5divPow2(const uint32_t m, const uint32_t i, const int32_t j) {
   return mulShift(m, FLOAT_POW5_SPLIT[i], j);
 }
 
@@ -115,7 +115,7 @@ struct floating_decimal_32 {
   int32_t exponent;
 };
 
-static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_t ieeeExponent) {
+_NODISCARD inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_t ieeeExponent) {
   int32_t e2;
   uint32_t m2;
   if (ieeeExponent == 0) {
@@ -256,7 +256,7 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
   return fd;
 }
 
-static inline int to_chars(const floating_decimal_32 v, char* const result) {
+_NODISCARD inline int to_chars(const floating_decimal_32 v, char* const result) {
   // Step 5: Print the decimal representation.
   uint32_t output = v.mantissa;
   const uint32_t olength = decimalLength9(output);
@@ -318,7 +318,7 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
   return index;
 }
 
-int f2s_buffered_n(const float f, char* const result) {
+_NODISCARD inline int f2s_buffered_n(const float f, char* const result) {
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint32_t bits = float_to_bits(f);
 

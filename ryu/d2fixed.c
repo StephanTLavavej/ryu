@@ -23,7 +23,7 @@ inline constexpr int POW10_ADDITIONAL_BITS = 120;
 
 #if defined(HAS_64_BIT_INTRINSICS)
 // Returns the low 64 bits of the high 128 bits of the 256-bit product of a and b.
-static inline uint64_t umul256_hi128_lo64(
+_NODISCARD inline uint64_t umul256_hi128_lo64(
   const uint64_t aHi, const uint64_t aLo, const uint64_t bHi, const uint64_t bLo) {
   uint64_t b00Hi;
   const uint64_t b00Lo = umul128(aLo, bLo, &b00Hi);
@@ -42,7 +42,7 @@ static inline uint64_t umul256_hi128_lo64(
   return b11Lo + temp1Hi + temp2Hi;
 }
 
-static inline uint32_t uint128_mod1e9(const uint64_t vHi, const uint64_t vLo) {
+_NODISCARD inline uint32_t uint128_mod1e9(const uint64_t vHi, const uint64_t vLo) {
   // After multiplying, we're going to shift right by 29, then truncate to uint32_t.
   // This means that we need only 29 + 32 = 61 bits, so we can truncate to uint64_t before shifting.
   const uint64_t multiplied = umul256_hi128_lo64(vHi, vLo, 0x89705F4136B4A597u, 0x31680A88F8953031u);
@@ -54,7 +54,7 @@ static inline uint32_t uint128_mod1e9(const uint64_t vHi, const uint64_t vLo) {
 }
 #endif // HAS_64_BIT_INTRINSICS
 
-static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const mul, const int32_t j) {
+_NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const mul, const int32_t j) {
   uint64_t high0;                                   // 64
   const uint64_t low0 = umul128(m, mul[0], &high0); // 0
   uint64_t high1;                                   // 128
@@ -89,7 +89,7 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
 #endif // HAS_64_BIT_INTRINSICS
 }
 
-static inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {
+inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {
   uint32_t i = 0;
   while (digits >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
@@ -118,7 +118,7 @@ static inline void append_n_digits(const uint32_t olength, uint32_t digits, char
   }
 }
 
-static inline void append_d_digits(const uint32_t olength, uint32_t digits, char* const result) {
+inline void append_d_digits(const uint32_t olength, uint32_t digits, char* const result) {
   uint32_t i = 0;
   while (digits >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
@@ -150,7 +150,7 @@ static inline void append_d_digits(const uint32_t olength, uint32_t digits, char
   }
 }
 
-static inline void append_c_digits(const uint32_t count, uint32_t digits, char* const result) {
+inline void append_c_digits(const uint32_t count, uint32_t digits, char* const result) {
   uint32_t i = 0;
   for (; i < count - 1; i += 2) {
     const uint32_t c = (digits % 100) << 1;
@@ -163,7 +163,7 @@ static inline void append_c_digits(const uint32_t count, uint32_t digits, char* 
   }
 }
 
-static inline void append_nine_digits(uint32_t digits, char* const result) {
+inline void append_nine_digits(uint32_t digits, char* const result) {
   if (digits == 0) {
     memset(result, '0', 9);
     return;
@@ -184,20 +184,20 @@ static inline void append_nine_digits(uint32_t digits, char* const result) {
   result[0] = static_cast<char>('0' + digits);
 }
 
-static inline uint32_t indexForExponent(const uint32_t e) {
+_NODISCARD inline uint32_t indexForExponent(const uint32_t e) {
   return (e + 15) / 16;
 }
 
-static inline uint32_t pow10BitsForIndex(const uint32_t idx) {
+_NODISCARD inline uint32_t pow10BitsForIndex(const uint32_t idx) {
   return 16 * idx + POW10_ADDITIONAL_BITS;
 }
 
-static inline uint32_t lengthForIndex(const uint32_t idx) {
+_NODISCARD inline uint32_t lengthForIndex(const uint32_t idx) {
   // +1 for ceil, +16 for mantissa, +8 to round up when dividing by 9
   return (log10Pow2(16 * static_cast<int32_t>(idx)) + 1 + 16 + 8) / 9;
 }
 
-int d2fixed_buffered_n(const double d, const uint32_t precision, char* const result) {
+_NODISCARD inline int d2fixed_buffered_n(const double d, const uint32_t precision, char* const result) {
   const uint64_t bits = double_to_bits(d);
 
   // Case distinction; exit early for the easy cases.
@@ -347,7 +347,7 @@ int d2fixed_buffered_n(const double d, const uint32_t precision, char* const res
   return index;
 }
 
-int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
+_NODISCARD inline int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
   const uint64_t bits = double_to_bits(d);
 
   // Case distinction; exit early for the easy cases.
