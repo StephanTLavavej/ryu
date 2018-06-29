@@ -80,8 +80,8 @@ static inline uint64_t mulShiftAll(const uint64_t m, const uint64_t* const mul, 
 
 #else // HAS_64_BIT_INTRINSICS
 
-static inline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const int32_t j,
-  uint64_t* const vp, uint64_t* const vm, const uint32_t mmShift) {
+static __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const int32_t j,
+  uint64_t* const vp, uint64_t* const vm, const uint32_t mmShift) { // TRANSITION, VSO#634761
   m <<= 1;
   // m is maximum 55 bits
   uint64_t tmp;

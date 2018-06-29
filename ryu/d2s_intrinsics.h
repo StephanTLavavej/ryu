@@ -35,7 +35,8 @@ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const
 
 #else // defined(HAS_64_BIT_INTRINSICS)
 
-static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
+static __forceinline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
+  // TRANSITION, VSO#634761
   // The casts here help MSVC to avoid calls to the __allmul library function.
   const uint32_t aLo = static_cast<uint32_t>(a);
   const uint32_t aHi = static_cast<uint32_t>(a >> 32);
