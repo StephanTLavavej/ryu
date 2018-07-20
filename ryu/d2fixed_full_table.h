@@ -15,9 +15,9 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-inline constexpr int TABLE_SIZE = 64;
+inline constexpr int __TABLE_SIZE = 64;
 
-inline constexpr uint16_t POW10_OFFSET[TABLE_SIZE] = {
+inline constexpr uint16_t __POW10_OFFSET[__TABLE_SIZE] = {
   0, 2, 5, 8, 12, 16, 21, 26, 32, 39,
   46, 54, 62, 71, 80, 90, 100, 111, 122, 134,
   146, 159, 173, 187, 202, 217, 233, 249, 266, 283,
@@ -27,7 +27,7 @@ inline constexpr uint16_t POW10_OFFSET[TABLE_SIZE] = {
   1084, 1118, 1153, 1188
 };
 
-inline constexpr uint64_t POW10_SPLIT[1224][3] = {
+inline constexpr uint64_t __POW10_SPLIT[1224][3] = {
   {                    1u,    72057594037927936u,                    0u },
   {   699646928636035157u,             72057594u,                    0u },
   {                    1u,                    0u,                  256u },
@@ -1254,10 +1254,10 @@ inline constexpr uint64_t POW10_SPLIT[1224][3] = {
   {  8310173728816391804u,               197658u,                    0u },
 };
 
-inline constexpr int TABLE_SIZE_2 = 69;
-inline constexpr int ADDITIONAL_BITS_2 = 120;
+inline constexpr int __TABLE_SIZE_2 = 69;
+inline constexpr int __ADDITIONAL_BITS_2 = 120;
 
-inline constexpr uint16_t POW10_OFFSET_2[TABLE_SIZE_2] = {
+inline constexpr uint16_t __POW10_OFFSET_2[__TABLE_SIZE_2] = {
      0,    2,    6,   12,   20,   29,   40,   52,   66,   80,
     95,  112,  130,  150,  170,  192,  215,  240,  265,  292,
    320,  350,  381,  413,  446,  480,  516,  552,  590,  629,
@@ -1267,7 +1267,7 @@ inline constexpr uint16_t POW10_OFFSET_2[TABLE_SIZE_2] = {
   2465, 2544, 2625, 2706, 2789, 2873, 2959, 3046, 3133
 };
 
-inline constexpr uint8_t MIN_BLOCK_2[TABLE_SIZE_2] = {
+inline constexpr uint8_t __MIN_BLOCK_2[__TABLE_SIZE_2] = {
      0,    0,    0,    0,    0,    0,    1,    1,    2,    3,
      3,    4,    4,    5,    5,    6,    6,    7,    7,    8,
      8,    9,    9,   10,   11,   11,   12,   12,   13,   13,
@@ -1277,7 +1277,7 @@ inline constexpr uint8_t MIN_BLOCK_2[TABLE_SIZE_2] = {
     30,   30,   31,   31,   32,   32,   33,   34,    0
 };
 
-inline constexpr uint64_t POW10_SPLIT_2[3133][3] = {
+inline constexpr uint64_t __POW10_SPLIT_2[3133][3] = {
   {                    0u,                    0u,              3906250u },
   {                    0u,                    0u,         202000000000u },
   {                    0u, 11153727427136454656u,                   59u },

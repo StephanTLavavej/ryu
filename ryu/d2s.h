@@ -15,9 +15,9 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-inline constexpr int DOUBLE_MANTISSA_BITS = 52;
-inline constexpr int DOUBLE_EXPONENT_BITS = 11;
-inline constexpr int DOUBLE_BIAS = 1023;
+inline constexpr int __DOUBLE_MANTISSA_BITS = 52;
+inline constexpr int __DOUBLE_EXPONENT_BITS = 11;
+inline constexpr int __DOUBLE_BIAS = 1023;
 
-inline constexpr int DOUBLE_POW5_INV_BITCOUNT = 122;
-inline constexpr int DOUBLE_POW5_BITCOUNT = 121;
+inline constexpr int __DOUBLE_POW5_INV_BITCOUNT = 122;
+inline constexpr int __DOUBLE_POW5_BITCOUNT = 121;

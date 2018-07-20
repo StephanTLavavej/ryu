@@ -15,56 +15,56 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-_NODISCARD inline uint32_t decimalLength9(const uint32_t v) {
-  // Function precondition: v is not a 10-digit number.
+_NODISCARD inline uint32_t __decimalLength9(const uint32_t __v) {
+  // Function precondition: __v is not a 10-digit number.
   // (f2s: 9 digits are sufficient for round-tripping.)
   // (d2fixed: We print 9-digit blocks.)
-  _STL_INTERNAL_CHECK(v < 1000000000);
-  if (v >= 100000000) { return 9; }
-  if (v >= 10000000) { return 8; }
-  if (v >= 1000000) { return 7; }
-  if (v >= 100000) { return 6; }
-  if (v >= 10000) { return 5; }
-  if (v >= 1000) { return 4; }
-  if (v >= 100) { return 3; }
-  if (v >= 10) { return 2; }
+  _STL_INTERNAL_CHECK(__v < 1000000000);
+  if (__v >= 100000000) { return 9; }
+  if (__v >= 10000000) { return 8; }
+  if (__v >= 1000000) { return 7; }
+  if (__v >= 100000) { return 6; }
+  if (__v >= 10000) { return 5; }
+  if (__v >= 1000) { return 4; }
+  if (__v >= 100) { return 3; }
+  if (__v >= 10) { return 2; }
   return 1;
 }
 
-// Returns e == 0 ? 1 : ceil(log_2(5^e)).
-_NODISCARD inline int32_t pow5bits(const int32_t e) {
-  // This approximation works up to the point that the multiplication overflows at e = 3529.
+// Returns __e == 0 ? 1 : ceil(log_2(5^__e)).
+_NODISCARD inline int32_t __pow5bits(const int32_t __e) {
+  // This approximation works up to the point that the multiplication overflows at __e = 3529.
   // If the multiplication were done in 64 bits, it would fail at 5^4004 which is just greater
   // than 2^9297.
-  _STL_INTERNAL_CHECK(e >= 0);
-  _STL_INTERNAL_CHECK(e <= 3528);
-  return static_cast<int32_t>(((static_cast<uint32_t>(e) * 1217359) >> 19) + 1);
+  _STL_INTERNAL_CHECK(__e >= 0);
+  _STL_INTERNAL_CHECK(__e <= 3528);
+  return static_cast<int32_t>(((static_cast<uint32_t>(__e) * 1217359) >> 19) + 1);
 }
 
-// Returns floor(log_10(2^e)).
-_NODISCARD inline uint32_t log10Pow2(const int32_t e) {
+// Returns floor(log_10(2^__e)).
+_NODISCARD inline uint32_t __log10Pow2(const int32_t __e) {
   // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
-  _STL_INTERNAL_CHECK(e >= 0);
-  _STL_INTERNAL_CHECK(e <= 1650);
-  return (static_cast<uint32_t>(e) * 78913) >> 18;
+  _STL_INTERNAL_CHECK(__e >= 0);
+  _STL_INTERNAL_CHECK(__e <= 1650);
+  return (static_cast<uint32_t>(__e) * 78913) >> 18;
 }
 
-// Returns floor(log_10(5^e)).
-_NODISCARD inline uint32_t log10Pow5(const int32_t e) {
+// Returns floor(log_10(5^__e)).
+_NODISCARD inline uint32_t __log10Pow5(const int32_t __e) {
   // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
-  _STL_INTERNAL_CHECK(e >= 0);
-  _STL_INTERNAL_CHECK(e <= 2620);
-  return (static_cast<uint32_t>(e) * 732923) >> 20;
+  _STL_INTERNAL_CHECK(__e >= 0);
+  _STL_INTERNAL_CHECK(__e <= 2620);
+  return (static_cast<uint32_t>(__e) * 732923) >> 20;
 }
 
-_NODISCARD inline uint32_t float_to_bits(const float f) {
-  uint32_t bits = 0;
-  _CSTD memcpy(&bits, &f, sizeof(float));
-  return bits;
+_NODISCARD inline uint32_t __float_to_bits(const float __f) {
+  uint32_t __bits = 0;
+  _CSTD memcpy(&__bits, &__f, sizeof(float));
+  return __bits;
 }
 
-_NODISCARD inline uint64_t double_to_bits(const double d) {
-  uint64_t bits = 0;
-  _CSTD memcpy(&bits, &d, sizeof(double));
-  return bits;
+_NODISCARD inline uint64_t __double_to_bits(const double __d) {
+  uint64_t __bits = 0;
+  _CSTD memcpy(&__bits, &__d, sizeof(double));
+  return __bits;
 }

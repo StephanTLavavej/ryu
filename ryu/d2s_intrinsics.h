@@ -17,11 +17,11 @@
 
 #ifdef _M_X64
 
-_NODISCARD inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
-  return _umul128(a, b, productHi);
+_NODISCARD inline uint64_t __ryu_umul128(const uint64_t __a, const uint64_t __b, uint64_t* const __productHi) {
+  return _umul128(__a, __b, __productHi);
 }
 
-_NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
+_NODISCARD inline uint64_t __ryu_shiftright128(const uint64_t __lo, const uint64_t __hi, const uint32_t __dist) {
   // For the __shiftright128 intrinsic, the shift value is always
   // modulo 64.
   // In the current implementation of the double-precision version
@@ -29,53 +29,53 @@ _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, c
   // (The shift value is in the range [49, 58].)
   // Check this here in case a future change requires larger shift
   // values. In this case this function needs to be adjusted.
-  _STL_INTERNAL_CHECK(dist < 64);
-  return __shiftright128(lo, hi, static_cast<unsigned char>(dist));
+  _STL_INTERNAL_CHECK(__dist < 64);
+  return __shiftright128(__lo, __hi, static_cast<unsigned char>(__dist));
 }
 
 #else // ^^^ intrinsics available ^^^ / vvv intrinsics unavailable vvv
 
-_NODISCARD __forceinline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
+_NODISCARD __forceinline uint64_t __ryu_umul128(const uint64_t __a, const uint64_t __b, uint64_t* const __productHi) {
   // TRANSITION, VSO#634761
   // The casts here help MSVC to avoid calls to the __allmul library function.
-  const uint32_t aLo = static_cast<uint32_t>(a);
-  const uint32_t aHi = static_cast<uint32_t>(a >> 32);
-  const uint32_t bLo = static_cast<uint32_t>(b);
-  const uint32_t bHi = static_cast<uint32_t>(b >> 32);
+  const uint32_t __aLo = static_cast<uint32_t>(__a);
+  const uint32_t __aHi = static_cast<uint32_t>(__a >> 32);
+  const uint32_t __bLo = static_cast<uint32_t>(__b);
+  const uint32_t __bHi = static_cast<uint32_t>(__b >> 32);
 
-  const uint64_t b00 = static_cast<uint64_t>(aLo) * bLo;
-  const uint64_t b01 = static_cast<uint64_t>(aLo) * bHi;
-  const uint64_t b10 = static_cast<uint64_t>(aHi) * bLo;
-  const uint64_t b11 = static_cast<uint64_t>(aHi) * bHi;
+  const uint64_t __b00 = static_cast<uint64_t>(__aLo) * __bLo;
+  const uint64_t __b01 = static_cast<uint64_t>(__aLo) * __bHi;
+  const uint64_t __b10 = static_cast<uint64_t>(__aHi) * __bLo;
+  const uint64_t __b11 = static_cast<uint64_t>(__aHi) * __bHi;
 
-  const uint32_t b00Lo = static_cast<uint32_t>(b00);
-  const uint32_t b00Hi = static_cast<uint32_t>(b00 >> 32);
+  const uint32_t __b00Lo = static_cast<uint32_t>(__b00);
+  const uint32_t __b00Hi = static_cast<uint32_t>(__b00 >> 32);
 
-  const uint64_t mid1 = b10 + b00Hi;
-  const uint32_t mid1Lo = static_cast<uint32_t>(mid1);
-  const uint32_t mid1Hi = static_cast<uint32_t>(mid1 >> 32);
+  const uint64_t __mid1 = __b10 + __b00Hi;
+  const uint32_t __mid1Lo = static_cast<uint32_t>(__mid1);
+  const uint32_t __mid1Hi = static_cast<uint32_t>(__mid1 >> 32);
 
-  const uint64_t mid2 = b01 + mid1Lo;
-  const uint32_t mid2Lo = static_cast<uint32_t>(mid2);
-  const uint32_t mid2Hi = static_cast<uint32_t>(mid2 >> 32);
+  const uint64_t __mid2 = __b01 + __mid1Lo;
+  const uint32_t __mid2Lo = static_cast<uint32_t>(__mid2);
+  const uint32_t __mid2Hi = static_cast<uint32_t>(__mid2 >> 32);
 
-  const uint64_t pHi = b11 + mid1Hi + mid2Hi;
-  const uint64_t pLo = (static_cast<uint64_t>(mid2Lo) << 32) | b00Lo;
+  const uint64_t __pHi = __b11 + __mid1Hi + __mid2Hi;
+  const uint64_t __pLo = (static_cast<uint64_t>(__mid2Lo) << 32) | __b00Lo;
 
-  *productHi = pHi;
-  return pLo;
+  *__productHi = __pHi;
+  return __pLo;
 }
 
-_NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
-  // We don't need to handle the case dist >= 64 here (see above).
-  _STL_INTERNAL_CHECK(dist < 64);
+_NODISCARD inline uint64_t __ryu_shiftright128(const uint64_t __lo, const uint64_t __hi, const uint32_t __dist) {
+  // We don't need to handle the case __dist >= 64 here (see above).
+  _STL_INTERNAL_CHECK(__dist < 64);
 #ifdef _WIN64
-  _STL_INTERNAL_CHECK(dist > 0);
-  return (hi << (64 - dist)) | (lo >> dist);
+  _STL_INTERNAL_CHECK(__dist > 0);
+  return (__hi << (64 - __dist)) | (__lo >> __dist);
 #else // ^^^ 64-bit ^^^ / vvv 32-bit vvv
   // Avoid a 64-bit shift by taking advantage of the range of shift values.
-  _STL_INTERNAL_CHECK(dist >= 32);
-  return (hi << (64 - dist)) | (static_cast<uint32_t>(lo >> 32) >> (dist - 32));
+  _STL_INTERNAL_CHECK(__dist >= 32);
+  return (__hi << (64 - __dist)) | (static_cast<uint32_t>(__lo >> 32) >> (__dist - 32));
 #endif // ^^^ 32-bit ^^^
 }
 
@@ -83,14 +83,14 @@ _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, c
 
 #ifndef _WIN64
 
-// Returns the high 64 bits of the 128-bit product of a and b.
-_NODISCARD inline uint64_t umulh(const uint64_t a, const uint64_t b) {
-  // Reuse the umul128 implementation.
+// Returns the high 64 bits of the 128-bit product of __a and __b.
+_NODISCARD inline uint64_t __umulh(const uint64_t __a, const uint64_t __b) {
+  // Reuse the __ryu_umul128 implementation.
   // Optimizers will likely eliminate the instructions used to compute the
   // low part of the product.
-  uint64_t hi;
-  (void) umul128(a, b, &hi);
-  return hi;
+  uint64_t __hi;
+  (void) __ryu_umul128(__a, __b, &__hi);
+  return __hi;
 }
 
 // On 32-bit platforms, compilers typically generate calls to library
@@ -105,91 +105,91 @@ _NODISCARD inline uint64_t umulh(const uint64_t a, const uint64_t b) {
 // The multipliers and shift values are the ones generated by clang x64
 // for expressions like x/5, x/10, etc.
 
-_NODISCARD inline uint64_t div5(const uint64_t x) {
-  return umulh(x, 0xCCCCCCCCCCCCCCCDu) >> 2;
+_NODISCARD inline uint64_t __div5(const uint64_t __x) {
+  return __umulh(__x, 0xCCCCCCCCCCCCCCCDu) >> 2;
 }
 
-_NODISCARD inline uint64_t div10(const uint64_t x) {
-  return umulh(x, 0xCCCCCCCCCCCCCCCDu) >> 3;
+_NODISCARD inline uint64_t __div10(const uint64_t __x) {
+  return __umulh(__x, 0xCCCCCCCCCCCCCCCDu) >> 3;
 }
 
-_NODISCARD inline uint64_t div100(const uint64_t x) {
-  return umulh(x >> 2, 0x28F5C28F5C28F5C3u) >> 2;
+_NODISCARD inline uint64_t __div100(const uint64_t __x) {
+  return __umulh(__x >> 2, 0x28F5C28F5C28F5C3u) >> 2;
 }
 
-_NODISCARD inline uint64_t div1e8(const uint64_t x) {
-  return umulh(x, 0xABCC77118461CEFDu) >> 26;
+_NODISCARD inline uint64_t __div1e8(const uint64_t __x) {
+  return __umulh(__x, 0xABCC77118461CEFDu) >> 26;
 }
 
-_NODISCARD inline uint64_t div1e9(const uint64_t x) {
-  return umulh(x >> 9, 0x44B82FA09B5A53u) >> 11;
+_NODISCARD inline uint64_t __div1e9(const uint64_t __x) {
+  return __umulh(__x >> 9, 0x44B82FA09B5A53u) >> 11;
 }
 
-_NODISCARD inline uint32_t mod1e9(const uint64_t x) {
+_NODISCARD inline uint32_t __mod1e9(const uint64_t __x) {
   // Avoid 64-bit math as much as possible.
-  // Returning static_cast<uint32_t>(x - 1000000000 * div1e9(x)) would
+  // Returning static_cast<uint32_t>(__x - 1000000000 * __div1e9(__x)) would
   // perform 32x64-bit multiplication and 64-bit subtraction.
-  // x and 1000000000 * div1e9(x) are guaranteed to differ by
+  // __x and 1000000000 * __div1e9(__x) are guaranteed to differ by
   // less than 10^9, so their highest 32 bits must be identical,
   // so we can truncate both sides to uint32_t before subtracting.
-  // We can also simplify static_cast<uint32_t>(1000000000 * div1e9(x)).
+  // We can also simplify static_cast<uint32_t>(1000000000 * __div1e9(__x)).
   // We can truncate before multiplying instead of after, as multiplying
-  // the highest 32 bits of div1e9(x) can't affect the lowest 32 bits.
-  return static_cast<uint32_t>(x) - 1000000000 * static_cast<uint32_t>(div1e9(x));
+  // the highest 32 bits of __div1e9(__x) can't affect the lowest 32 bits.
+  return static_cast<uint32_t>(__x) - 1000000000 * static_cast<uint32_t>(__div1e9(__x));
 }
 
 #else // ^^^ 32-bit ^^^ / vvv 64-bit vvv
 
-_NODISCARD inline uint64_t div5(const uint64_t x) {
-  return x / 5;
+_NODISCARD inline uint64_t __div5(const uint64_t __x) {
+  return __x / 5;
 }
 
-_NODISCARD inline uint64_t div10(const uint64_t x) {
-  return x / 10;
+_NODISCARD inline uint64_t __div10(const uint64_t __x) {
+  return __x / 10;
 }
 
-_NODISCARD inline uint64_t div100(const uint64_t x) {
-  return x / 100;
+_NODISCARD inline uint64_t __div100(const uint64_t __x) {
+  return __x / 100;
 }
 
-_NODISCARD inline uint64_t div1e8(const uint64_t x) {
-  return x / 100000000;
+_NODISCARD inline uint64_t __div1e8(const uint64_t __x) {
+  return __x / 100000000;
 }
 
-_NODISCARD inline uint64_t div1e9(const uint64_t x) {
-  return x / 1000000000;
+_NODISCARD inline uint64_t __div1e9(const uint64_t __x) {
+  return __x / 1000000000;
 }
 
-_NODISCARD inline uint32_t mod1e9(const uint64_t x) {
-  return static_cast<uint32_t>(x - 1000000000 * div1e9(x));
+_NODISCARD inline uint32_t __mod1e9(const uint64_t __x) {
+  return static_cast<uint32_t>(__x - 1000000000 * __div1e9(__x));
 }
 
 #endif // ^^^ 64-bit ^^^
 
-_NODISCARD inline uint32_t pow5Factor(uint64_t value) {
-  uint32_t count = 0;
+_NODISCARD inline uint32_t __pow5Factor(uint64_t __value) {
+  uint32_t __count = 0;
   for (;;) {
-    _STL_INTERNAL_CHECK(value != 0);
-    const uint64_t q = div5(value);
-    const uint32_t r = static_cast<uint32_t>(value) - 5 * static_cast<uint32_t>(q);
-    if (r != 0) {
+    _STL_INTERNAL_CHECK(__value != 0);
+    const uint64_t __q = __div5(__value);
+    const uint32_t __r = static_cast<uint32_t>(__value) - 5 * static_cast<uint32_t>(__q);
+    if (__r != 0) {
       break;
     }
-    value = q;
-    ++count;
+    __value = __q;
+    ++__count;
   }
-  return count;
+  return __count;
 }
 
-// Returns true if value is divisible by 5^p.
-_NODISCARD inline bool multipleOfPowerOf5(const uint64_t value, const uint32_t p) {
-  // I tried a case distinction on p, but there was no performance difference.
-  return pow5Factor(value) >= p;
+// Returns true if __value is divisible by 5^__p.
+_NODISCARD inline bool __multipleOfPowerOf5(const uint64_t __value, const uint32_t __p) {
+  // I tried a case distinction on __p, but there was no performance difference.
+  return __pow5Factor(__value) >= __p;
 }
 
-// Returns true if value is divisible by 2^p.
-_NODISCARD inline bool multipleOfPowerOf2(const uint64_t value, const uint32_t p) {
-  _STL_INTERNAL_CHECK(value != 0);
-  // return __builtin_ctzll(value) >= p;
-  return (value & ((1ull << p) - 1)) == 0;
+// Returns true if __value is divisible by 2^__p.
+_NODISCARD inline bool __multipleOfPowerOf2(const uint64_t __value, const uint32_t __p) {
+  _STL_INTERNAL_CHECK(__value != 0);
+  // return __builtin_ctzll(__value) >= __p;
+  return (__value & ((1ull << __p) - 1)) == 0;
 }
