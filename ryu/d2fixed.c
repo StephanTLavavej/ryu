@@ -201,41 +201,12 @@ static inline uint32_t lengthForIndex(const uint32_t idx) {
   return (log10Pow2(16 * (int32_t) idx) + 1 + 16 + 8) / 9;
 }
 
-static inline int copy_special_str_printf(char* const result, const bool sign, const uint64_t mantissa) {
-  if (sign) {
-    result[0] = '-';
-  }
-  if (mantissa) {
-#if defined(_MSC_VER)
-    if (mantissa < (1ull << (DOUBLE_MANTISSA_BITS - 1))) {
-      memcpy(result + sign, "nan(snan)", 9);
-      return sign + 9;
-    }
-#endif
-    memcpy(result + sign, "nan", 3);
-    return sign + 3;
-  }
-  memcpy(result + sign, "Infinity", 8);
-  return sign + 8;
-}
-
 int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
   const uint64_t bits = double_to_bits(d);
 
-  // Decode bits into sign, mantissa, and exponent.
-  const bool ieeeSign = ((bits >> (DOUBLE_MANTISSA_BITS + DOUBLE_EXPONENT_BITS)) & 1) != 0;
-  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) ((bits >> DOUBLE_MANTISSA_BITS) & ((1u << DOUBLE_EXPONENT_BITS) - 1));
-
   // Case distinction; exit early for the easy cases.
-  if (ieeeExponent == ((1u << DOUBLE_EXPONENT_BITS) - 1u)) {
-    return copy_special_str_printf(result, ieeeSign, ieeeMantissa);
-  }
-  if (ieeeExponent == 0 && ieeeMantissa == 0) {
+  if (bits == 0) {
     int index = 0;
-    if (ieeeSign) {
-      result[index++] = '-';
-    }
     result[index++] = '0';
     if (precision > 0) {
       result[index++] = '.';
@@ -244,6 +215,10 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
     }
     return index;
   }
+
+  // Decode bits into mantissa and exponent.
+  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
+  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
 
   int32_t e2;
   uint64_t m2;
@@ -257,9 +232,6 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
 
   int index = 0;
   bool nonzero = false;
-  if (ieeeSign) {
-    result[index++] = '-';
-  }
   if (e2 >= -52) {
     const uint32_t idx = e2 < 0 ? 0 : indexForExponent((uint32_t) e2);
     const uint32_t p10bits = pow10BitsForIndex(idx);
@@ -346,9 +318,8 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
       int dotIndex = 0; // '.' can't be located at index 0
       while (true) {
         --roundIndex;
-        char c;
-        if (roundIndex == -1 || (c = result[roundIndex], c == '-')) {
-          result[roundIndex + 1] = '1';
+        if (roundIndex == -1) {
+          result[0] = '1';
           if (dotIndex > 0) {
             result[dotIndex] = '0';
             result[dotIndex + 1] = '.';
@@ -356,6 +327,7 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
           result[index++] = '0';
           break;
         }
+        const char c = result[roundIndex];
         if (c == '.') {
           dotIndex = roundIndex;
           continue;
@@ -382,20 +354,9 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
 int d2exp_buffered_n(double d, uint32_t precision, char* result) {
   const uint64_t bits = double_to_bits(d);
 
-  // Decode bits into sign, mantissa, and exponent.
-  const bool ieeeSign = ((bits >> (DOUBLE_MANTISSA_BITS + DOUBLE_EXPONENT_BITS)) & 1) != 0;
-  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) ((bits >> DOUBLE_MANTISSA_BITS) & ((1u << DOUBLE_EXPONENT_BITS) - 1));
-
   // Case distinction; exit early for the easy cases.
-  if (ieeeExponent == ((1u << DOUBLE_EXPONENT_BITS) - 1u)) {
-    return copy_special_str_printf(result, ieeeSign, ieeeMantissa);
-  }
-  if (ieeeExponent == 0 && ieeeMantissa == 0) {
+  if (bits == 0) {
     int index = 0;
-    if (ieeeSign) {
-      result[index++] = '-';
-    }
     result[index++] = '0';
     if (precision > 0) {
       result[index++] = '.';
@@ -406,6 +367,10 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
     index += 4;
     return index;
   }
+
+  // Decode bits into mantissa and exponent.
+  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
+  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
 
   int32_t e2;
   uint64_t m2;
@@ -420,9 +385,6 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
   const bool printDecimalPoint = precision > 0;
   ++precision;
   int index = 0;
-  if (ieeeSign) {
-    result[index++] = '-';
-  }
   uint32_t digits = 0;
   uint32_t printedDigits = 0;
   uint32_t availableDigits = 0;
@@ -543,12 +505,12 @@ int d2exp_buffered_n(double d, uint32_t precision, char* result) {
     int roundIndex = index;
     while (true) {
       --roundIndex;
-      char c;
-      if (roundIndex == -1 || (c = result[roundIndex], c == '-')) {
-        result[roundIndex + 1] = '1';
+      if (roundIndex == -1) {
+        result[0] = '1';
         ++exp;
         break;
       }
+      const char c = result[roundIndex];
       if (c == '.') {
         continue;
       } else if (c == '9') {

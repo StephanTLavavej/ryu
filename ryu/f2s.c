@@ -255,12 +255,9 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
   return fd;
 }
 
-static inline int to_chars(const floating_decimal_32 v, const bool sign, char* const result) {
+static inline int to_chars(const floating_decimal_32 v, char* const result) {
   // Step 5: Print the decimal representation.
   int index = 0;
-  if (sign) {
-    result[index++] = '-';
-  }
 
   uint32_t output = v.mantissa;
   const uint32_t olength = decimalLength9(output);
@@ -325,16 +322,16 @@ int f2s_buffered_n(float f, char* result) {
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint32_t bits = float_to_bits(f);
 
-  // Decode bits into sign, mantissa, and exponent.
-  const bool ieeeSign = ((bits >> (FLOAT_MANTISSA_BITS + FLOAT_EXPONENT_BITS)) & 1) != 0;
-  const uint32_t ieeeMantissa = bits & ((1u << FLOAT_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (bits >> FLOAT_MANTISSA_BITS) & ((1u << FLOAT_EXPONENT_BITS) - 1);
-
   // Case distinction; exit early for the easy cases.
-  if (ieeeExponent == ((1u << FLOAT_EXPONENT_BITS) - 1u) || (ieeeExponent == 0 && ieeeMantissa == 0)) {
-    return copy_special_str(result, ieeeSign, ieeeExponent, ieeeMantissa);
+  if (bits == 0) {
+    memcpy(result, "0E0", 3);
+    return 3;
   }
 
+  // Decode bits into mantissa and exponent.
+  const uint32_t ieeeMantissa = bits & ((1u << FLOAT_MANTISSA_BITS) - 1);
+  const uint32_t ieeeExponent = bits >> FLOAT_MANTISSA_BITS;
+
   const floating_decimal_32 v = f2d(ieeeMantissa, ieeeExponent);
-  return to_chars(v, ieeeSign, result);
+  return to_chars(v, result);
 }

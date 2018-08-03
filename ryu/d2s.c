@@ -318,12 +318,9 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
   return fd;
 }
 
-static inline int to_chars(const floating_decimal_64 v, const bool sign, char* const result) {
+static inline int to_chars(const floating_decimal_64 v, char* const result) {
   // Step 5: Print the decimal representation.
   int index = 0;
-  if (sign) {
-    result[index++] = '-';
-  }
 
   uint64_t output = v.mantissa;
   const uint32_t olength = decimalLength17(output);
@@ -449,14 +446,15 @@ int d2s_buffered_n(double f, char* result) {
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint64_t bits = double_to_bits(f);
 
-  // Decode bits into sign, mantissa, and exponent.
-  const bool ieeeSign = ((bits >> (DOUBLE_MANTISSA_BITS + DOUBLE_EXPONENT_BITS)) & 1) != 0;
-  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) ((bits >> DOUBLE_MANTISSA_BITS) & ((1u << DOUBLE_EXPONENT_BITS) - 1));
   // Case distinction; exit early for the easy cases.
-  if (ieeeExponent == ((1u << DOUBLE_EXPONENT_BITS) - 1u) || (ieeeExponent == 0 && ieeeMantissa == 0)) {
-    return copy_special_str(result, ieeeSign, ieeeExponent, ieeeMantissa);
+  if (bits == 0) {
+    memcpy(result, "0E0", 3);
+    return 3;
   }
+
+  // Decode bits into mantissa and exponent.
+  const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
+  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
 
   floating_decimal_64 v;
   const bool isSmallInt = d2d_small_int(ieeeMantissa, ieeeExponent, &v);
@@ -478,5 +476,5 @@ int d2s_buffered_n(double f, char* result) {
     v = d2d(ieeeMantissa, ieeeExponent);
   }
 
-  return to_chars(v, ieeeSign, result);
+  return to_chars(v, result);
 }
