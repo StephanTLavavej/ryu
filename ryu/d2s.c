@@ -141,10 +141,10 @@ static inline uint32_t decimalLength17(const uint64_t v) {
 }
 
 // A floating decimal representing m * 10^e.
-typedef struct floating_decimal_64 {
+struct floating_decimal_64 {
   uint64_t mantissa;
   int32_t exponent;
-} floating_decimal_64;
+};
 
 static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_t ieeeExponent) {
   int32_t e2;

@@ -110,10 +110,10 @@ static inline uint32_t mulPow5divPow2(const uint32_t m, const uint32_t i, const 
 }
 
 // A floating decimal representing m * 10^e.
-typedef struct floating_decimal_32 {
+struct floating_decimal_32 {
   uint32_t mantissa;
   int32_t exponent;
-} floating_decimal_32;
+};
 
 static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_t ieeeExponent) {
   int32_t e2;
