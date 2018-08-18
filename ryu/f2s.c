@@ -254,10 +254,293 @@ _NODISCARD inline __floating_decimal_32 __f2d(const uint32_t __ieeeMantissa, con
   return __fd;
 }
 
-_NODISCARD inline int __to_chars(const __floating_decimal_32 __v, char* const __result) {
+_NODISCARD inline uint64_t __div1e9(uint64_t __x); // TRANSITION, LLVM#37932
+
+_NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_32 __v,
+  chars_format _Fmt, const uint32_t __ieeeMantissa, const uint32_t __ieeeExponent) {
   // Step 5: Print the decimal representation.
   uint32_t __output = __v.__mantissa;
+  int32_t _Ryu_exponent = __v.__exponent;
   const uint32_t __olength = __decimalLength9(__output);
+  int32_t _Scientific_exponent = _Ryu_exponent + static_cast<int32_t>(__olength) - 1;
+
+  if (_Fmt == chars_format{}) {
+    int32_t _Lower;
+    int32_t _Upper;
+
+    if (__olength == 1) {
+      // Value | Fixed   | Scientific
+      // 1e-3  | "0.001" | "1e-03"
+      // 1e4   | "10000" | "1e+04"
+      _Lower = -3;
+      _Upper = 4;
+    } else {
+      // Value   | Fixed       | Scientific
+      // 1234e-7 | "0.0001234" | "1.234e-04"
+      // 1234e5  | "123400000" | "1.234e+08"
+      _Lower = -static_cast<int32_t>(__olength + 3);
+      _Upper = 5;
+    }
+
+    if (_Lower <= _Ryu_exponent && _Ryu_exponent <= _Upper) {
+      _Fmt = chars_format::fixed;
+    } else {
+      _Fmt = chars_format::scientific;
+    }
+  } else if (_Fmt == chars_format::general) {
+    // C11 7.21.6.1 "The fprintf function"/8:
+    // "Let P equal [...] 6 if the precision is omitted [...].
+    // Then, if a conversion with style E would have an exponent of X:
+    // - if P > X >= -4, the conversion is with style f [...].
+    // - otherwise, the conversion is with style e [...]."
+    if (-4 <= _Scientific_exponent && _Scientific_exponent < 6) {
+      _Fmt = chars_format::fixed;
+    } else {
+      _Fmt = chars_format::scientific;
+    }
+  }
+
+  if (_Fmt == chars_format::fixed) {
+    // Example: __output == 1729, __olength == 4
+
+    // _Ryu_exponent | Printed  | _Whole_digits | _Total_fixed_length  | Notes
+    // --------------|----------|---------------|----------------------|---------------------------------------
+    //             2 | 172900   |  6            | _Whole_digits        | Ryu can't be used for printing
+    //             1 | 17290    |  5            | (sometimes adjusted) | when the trimmed digits are nonzero.
+    // --------------|----------|---------------|----------------------|---------------------------------------
+    //             0 | 1729     |  4            | _Whole_digits        | Unified length cases.
+    // --------------|----------|---------------|----------------------|---------------------------------------
+    //            -1 | 172.9    |  3            | __olength + 1        | This case can't happen for
+    //            -2 | 17.29    |  2            |                      | __olength == 1, but no additional
+    //            -3 | 1.729    |  1            |                      | code is needed to avoid it.
+    // --------------|----------|---------------|----------------------|---------------------------------------
+    //            -4 | 0.1729   |  0            | 2 - _Ryu_exponent    | C11 7.21.6.1 "The fprintf function"/8:
+    //            -5 | 0.01729  | -1            |                      | "If a decimal-point character appears,
+    //            -6 | 0.001729 | -2            |                      | at least one digit appears before it."
+
+    const int32_t _Whole_digits = static_cast<int32_t>(__olength) + _Ryu_exponent;
+
+    uint32_t _Total_fixed_length;
+    if (_Ryu_exponent >= 0) { // cases "172900" and "1729"
+      _Total_fixed_length = static_cast<uint32_t>(_Whole_digits);
+      if (__output == 1) {
+        // Rounding can affect the number of digits.
+        // For example, 1e11f is exactly "99999997952" which is 11 digits instead of 12.
+        // We can use a lookup table to detect this and adjust the total length.
+        static constexpr uint8_t _Adjustment[39] = {
+          0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,0,1,1,0,1,0,1,1,0,0,1,0,1,1,0,1,1,1 };
+        _Total_fixed_length -= _Adjustment[_Ryu_exponent];
+        // _Whole_digits doesn't need to be adjusted because these cases won't refer to it later.
+      }
+    } else if (_Whole_digits > 0) { // case "17.29"
+      _Total_fixed_length = __olength + 1;
+    } else { // case "0.001729"
+      _Total_fixed_length = static_cast<uint32_t>(2 - _Ryu_exponent);
+    }
+
+    if (_Last - _First < static_cast<ptrdiff_t>(_Total_fixed_length)) {
+      return { _Last, errc::value_too_large };
+    }
+
+    char* _Mid;
+    if (_Ryu_exponent > 0) { // case "172900"
+      bool _Can_use_ryu;
+
+      if (_Ryu_exponent > 10) { // 10^10 is the largest power of 10 that's exactly representable as a float.
+        _Can_use_ryu = false;
+      } else {
+        // Ryu generated X: __v.__mantissa * 10^_Ryu_exponent
+        // __v.__mantissa == 2^_Trailing_zero_bits * (__v.__mantissa >> _Trailing_zero_bits)
+        // 10^_Ryu_exponent == 2^_Ryu_exponent * 5^_Ryu_exponent
+
+        // _Trailing_zero_bits is [0, 29] (aside: because 2^29 is the largest power of 2
+        // with 9 decimal digits, which is float's round-trip limit.)
+        // _Ryu_exponent is [1, 10].
+        // Normalization adds [2, 23] (aside: at least 2 because the pre-normalized mantissa is at least 5).
+        // This adds up to [3, 62], which is well below float's maximum binary exponent 127.
+
+        // Therefore, we just need to consider (__v.__mantissa >> _Trailing_zero_bits) * 5^_Ryu_exponent.
+
+        // If that product would exceed 24 bits, then X can't be exactly represented as a float.
+        // (That's not a problem for round-tripping, because X is close enough to the original float,
+        // but X isn't mathematically equal to the original float.) This requires a high-precision fallback.
+
+        // If the product is 24 bits or smaller, then X can be exactly represented as a float (and we don't
+        // need to re-synthesize it; the original float must have been X, because Ryu wouldn't produce the
+        // same output for two different floats X and Y). This allows Ryu's output to be used (zero-filled).
+
+        // (2^24 - 1) / 5^0 (for indexing), (2^24 - 1) / 5^1, ..., (2^24 - 1) / 5^10
+        static constexpr uint32_t _Max_shifted_mantissa[11] = {
+          16777215, 3355443, 671088, 134217, 26843, 5368, 1073, 214, 42, 8, 1 };
+
+        unsigned long _Trailing_zero_bits;
+        (void) _BitScanForward(&_Trailing_zero_bits, __v.__mantissa); // __v.__mantissa is guaranteed nonzero
+        const uint32_t _Shifted_mantissa = __v.__mantissa >> _Trailing_zero_bits;
+        _Can_use_ryu = _Shifted_mantissa <= _Max_shifted_mantissa[_Ryu_exponent];
+      }
+
+      if (!_Can_use_ryu) {
+        // Print the integer _M2 * 2^_E2 exactly.
+        const uint32_t _M2 = __ieeeMantissa | (1u << __FLOAT_MANTISSA_BITS); // restore implicit bit
+        const uint32_t _E2 = __ieeeExponent - __FLOAT_BIAS - __FLOAT_MANTISSA_BITS; // bias and normalization
+
+        // For nonzero integers, static_cast<int>(_E2) >= -23. (The minimum value occurs when _M2 * 2^_E2 is 1.
+        // In that case, _M2 is the implicit 1 bit followed by 23 zeros, so _E2 is -23 to shift away the
+        // zeros.) Negative exponents could be handled by shifting _M2, then setting _E2 to 0. However, this
+        // isn't necessary. The dense range of exactly representable integers has negative or zero exponents
+        // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
+        // every digit is necessary to uniquely identify the value, so Ryu must print them all.
+        // Contrapositive: if Ryu can't be used, the exponent must be positive.
+        _STL_INTERNAL_CHECK(static_cast<int>(_E2) > 0);
+        _STL_INTERNAL_CHECK(_E2 <= 104); // because __ieeeExponent <= 254
+
+        // Manually represent _M2 * 2^_E2 as a large integer.
+        // _M2 is always 24 bits (due to the implicit bit), while _E2 indicates a shift of at most 104 bits.
+        // 24 + 104 equals 128 equals 4 * 32, so we need exactly 4 32-bit elements.
+        // We use a little-endian representation, visualized like this:
+
+        // << left shift <<
+        // most significant
+        // _Data[3] _Data[2] _Data[1] _Data[0]
+        //                   least significant
+        //                   >> right shift >>
+
+        constexpr uint32_t _Data_size = 4;
+        uint32_t _Data[_Data_size]{}; // zero-initialized
+        uint32_t _Maxidx = ((24 + _E2 + 31) / 32) - 1; // index of most significant nonzero element
+        _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
+
+        const uint32_t _Bit_shift = _E2 % 32;
+        if (_Bit_shift <= 8) { // _M2's 24 bits don't cross an element boundary
+          _Data[_Maxidx] = _M2 << _Bit_shift;
+        } else { // _M2's 24 bits cross an element boundary
+          _Data[_Maxidx - 1] = _M2 << _Bit_shift;
+          _Data[_Maxidx] = _M2 >> (32 - _Bit_shift);
+        }
+
+        // Print the decimal digits within [_First, _First + _Total_fixed_length), right to left.
+        _Mid = _First + _Total_fixed_length;
+
+        if (_Maxidx != 0) { // If the integer is actually large, perform long division.
+                            // Otherwise, skip to printing _Data[0].
+          for (;;) {
+            // Loop invariant: _Maxidx != 0 (i.e. the integer is actually large)
+
+            const uint32_t _Most_significant_elem = _Data[_Maxidx];
+            const uint32_t _Initial_remainder = _Most_significant_elem % 1000000000;
+            const uint32_t _Initial_quotient = _Most_significant_elem / 1000000000;
+            _Data[_Maxidx] = _Initial_quotient;
+            uint64_t _Remainder = _Initial_remainder;
+
+            // Process less significant elements.
+            uint32_t _Idx = _Maxidx;
+            do {
+              --_Idx; // Initially, _Remainder is at most 10^9 - 1.
+
+              // Now, _Remainder is at most (10^9 - 1) * 2^32 + 2^32 - 1, simplified to 10^9 * 2^32 - 1.
+              _Remainder = (_Remainder << 32) | _Data[_Idx];
+
+              // floor((10^9 * 2^32 - 1) / 10^9) == 2^32 - 1, so uint32_t _Quotient is lossless.
+              const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
+
+              // _Remainder is at most 10^9 - 1 again.
+              _Remainder = _Remainder - 1000000000ull * _Quotient;
+
+              _Data[_Idx] = _Quotient;
+            } while (_Idx != 0);
+
+            // Print a 0-filled 9-digit block.
+            uint32_t _Output = static_cast<uint32_t>(_Remainder);
+            const uint32_t __c = _Output % 10000;
+            _Output /= 10000;
+            const uint32_t __d = _Output % 10000;
+            _Output /= 10000;
+            const uint32_t __c0 = (__c % 100) << 1;
+            const uint32_t __c1 = (__c / 100) << 1;
+            const uint32_t __d0 = (__d % 100) << 1;
+            const uint32_t __d1 = (__d / 100) << 1;
+            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
+            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
+            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d0, 2);
+            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d1, 2);
+            *--_Mid = static_cast<char>('0' + _Output);
+
+            if (_Initial_quotient == 0) { // Is the large integer shrinking?
+              --_Maxidx; // log2(10^9) is 29.9, so we can't shrink by more than one element.
+              if (_Maxidx == 0) {
+                break; // We've finished long division. Now we need to print _Data[0].
+              }
+            }
+          }
+        }
+
+        _STL_INTERNAL_CHECK(_Data[0] != 0);
+        for (uint32_t _Idx = 1; _Idx < _Data_size; ++_Idx) {
+          _STL_INTERNAL_CHECK(_Data[_Idx] == 0);
+        }
+
+        // Fall through to print _Data[0]. While it's up to 10 digits,
+        // which is more than Ryu generates, the code below can handle this.
+        __output = _Data[0];
+        _Ryu_exponent = 0; // Imitate case "1729" to avoid further processing.
+      } else { // _Can_use_ryu
+        // Print the decimal digits, left-aligned within [_First, _First + _Total_fixed_length).
+        _Mid = _First + __olength;
+      }
+    } else { // cases "1729", "17.29", and "0.001729"
+      // Print the decimal digits, right-aligned within [_First, _First + _Total_fixed_length).
+      _Mid = _First + _Total_fixed_length;
+    }
+
+    while (__output >= 10000) {
+#ifdef __clang__ // TRANSITION, LLVM#38217
+      const uint32_t __c = __output - 10000 * (__output / 10000);
+#else
+      const uint32_t __c = __output % 10000;
+#endif
+      __output /= 10000;
+      const uint32_t __c0 = (__c % 100) << 1;
+      const uint32_t __c1 = (__c / 100) << 1;
+      _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
+      _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
+    }
+    if (__output >= 100) {
+      const uint32_t __c = (__output % 100) << 1;
+      __output /= 100;
+      _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+    }
+    if (__output >= 10) {
+      const uint32_t __c = __output << 1;
+      _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+    } else {
+      *--_Mid = static_cast<char>('0' + __output);
+    }
+
+    if (_Ryu_exponent > 0) { // case "172900" with _Can_use_ryu
+      // Performance note: it might be more efficient to do this immediately after setting _Mid.
+      _CSTD memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
+    } else if (_Ryu_exponent == 0) { // case "1729", and case "172900" with !_Can_use_ryu
+      // Done!
+    } else if (_Whole_digits > 0) { // case "17.29"
+      // Performance note: moving digits might not be optimal.
+      _CSTD memmove(_First, _First + 1, static_cast<size_t>(_Whole_digits));
+      _First[_Whole_digits] = '.';
+    } else { // case "0.001729"
+      // Performance note: a larger memset() followed by overwriting '.' might be more efficient.
+      _First[0] = '0';
+      _First[1] = '.';
+      _CSTD memset(_First + 2, '0', static_cast<size_t>(-_Whole_digits));
+    }
+
+    return { _First + _Total_fixed_length, errc{} };
+  }
+
+  const uint32_t _Total_scientific_length =
+    __olength + (__olength > 1) + 4; // digits + possible decimal point + scientific exponent
+  if (_Last - _First < static_cast<ptrdiff_t>(_Total_scientific_length)) {
+    return { _Last, errc::value_too_large };
+  }
+  char* const __result = _First;
 
   // Print the decimal digits.
   uint32_t __i = 0;
@@ -299,31 +582,46 @@ _NODISCARD inline int __to_chars(const __floating_decimal_32 __v, char* const __
   }
 
   // Print the exponent.
-  __result[__index++] = 'E';
-  int32_t __exp = __v.__exponent + static_cast<int32_t>(__olength) - 1;
-  if (__exp < 0) {
+  __result[__index++] = 'e';
+  if (_Scientific_exponent < 0) {
     __result[__index++] = '-';
-    __exp = -__exp;
-  }
-
-  if (__exp >= 10) {
-    _CSTD memcpy(__result + __index, __DIGIT_TABLE + 2 * __exp, 2);
-    __index += 2;
+    _Scientific_exponent = -_Scientific_exponent;
   } else {
-    __result[__index++] = static_cast<char>('0' + __exp);
+    __result[__index++] = '+';
   }
 
-  return __index;
+  _CSTD memcpy(__result + __index, __DIGIT_TABLE + 2 * _Scientific_exponent, 2);
+  __index += 2;
+
+  return { _First + _Total_scientific_length, errc{} };
 }
 
-_NODISCARD inline int __f2s_buffered_n(const float __f, char* const __result) {
+_NODISCARD inline to_chars_result __f2s_buffered_n(char* const _First, char* const _Last, const float __f,
+  const chars_format _Fmt) {
+
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint32_t __bits = __float_to_bits(__f);
 
   // Case distinction; exit early for the easy cases.
   if (__bits == 0) {
-    _CSTD memcpy(__result, "0E0", 3);
-    return 3;
+    if (_Fmt == chars_format::scientific) {
+      if (_Last - _First < 5) {
+        return { _Last, errc::value_too_large };
+      }
+
+      _CSTD memcpy(_First, "0e+00", 5);
+
+      return { _First + 5, errc{} };
+    }
+
+    // Print "0" for chars_format::fixed, chars_format::general, and chars_format{}.
+    if (_First == _Last) {
+      return { _Last, errc::value_too_large };
+    }
+
+    *_First = '0';
+
+    return { _First + 1, errc{} };
   }
 
   // Decode __bits into mantissa and exponent.
@@ -331,5 +629,5 @@ _NODISCARD inline int __f2s_buffered_n(const float __f, char* const __result) {
   const uint32_t __ieeeExponent = __bits >> __FLOAT_MANTISSA_BITS;
 
   const __floating_decimal_32 __v = __f2d(__ieeeMantissa, __ieeeExponent);
-  return __to_chars(__v, __result);
+  return __to_chars(_First, _Last, __v, _Fmt, __ieeeMantissa, __ieeeExponent);
 }
