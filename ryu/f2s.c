@@ -266,12 +266,6 @@ static inline int to_chars(const floating_decimal_32 v, const bool sign, char* c
   const uint32_t olength = decimalLength9(output);
 
   // Print the decimal digits.
-  // The following code is equivalent to:
-  // for (uint32_t i = 0; i < olength - 1; ++i) {
-  //   const uint32_t c = output % 10; output /= 10;
-  //   result[index + olength - i] = (char) ('0' + c);
-  // }
-  // result[index] = '0' + output % 10;
   uint32_t i = 0;
   while (output >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217

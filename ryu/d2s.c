@@ -329,13 +329,6 @@ static inline int to_chars(const floating_decimal_64 v, const bool sign, char* c
   const uint32_t olength = decimalLength17(output);
 
   // Print the decimal digits.
-  // The following code is equivalent to:
-  // for (uint32_t i = 0; i < olength - 1; ++i) {
-  //   const uint32_t c = output % 10; output /= 10;
-  //   result[index + olength - i] = (char) ('0' + c);
-  // }
-  // result[index] = '0' + output % 10;
-
   uint32_t i = 0;
   // We prefer 32-bit operations, even on 64-bit platforms.
   // We have at most 17 digits, and uint32_t can store 9 digits.
