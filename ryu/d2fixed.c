@@ -197,7 +197,7 @@ static inline uint32_t lengthForIndex(const uint32_t idx) {
   return (log10Pow2(16 * (int32_t) idx) + 1 + 16 + 8) / 9;
 }
 
-int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
+int d2fixed_buffered_n(const double d, const uint32_t precision, char* const result) {
   const uint64_t bits = double_to_bits(d);
 
   // Case distinction; exit early for the easy cases.
@@ -347,7 +347,7 @@ int d2fixed_buffered_n(double d, uint32_t precision, char* result) {
   return index;
 }
 
-int d2exp_buffered_n(double d, uint32_t precision, char* result) {
+int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
   const uint64_t bits = double_to_bits(d);
 
   // Case distinction; exit early for the easy cases.

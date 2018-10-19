@@ -317,7 +317,7 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
   return index;
 }
 
-int f2s_buffered_n(float f, char* result) {
+int f2s_buffered_n(const float f, char* const result) {
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
   const uint32_t bits = float_to_bits(f);
 
