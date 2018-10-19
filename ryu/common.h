@@ -42,7 +42,7 @@ static inline int32_t pow5bits(const int32_t e) {
   // than 2^9297.
   assert(e >= 0);
   assert(e <= 3528);
-  return (int32_t) (((((uint32_t) e) * 1217359) >> 19) + 1);
+  return static_cast<int32_t>(((static_cast<uint32_t>(e) * 1217359) >> 19) + 1);
 }
 
 // Returns floor(log_10(2^e)).
@@ -50,7 +50,7 @@ static inline uint32_t log10Pow2(const int32_t e) {
   // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
   assert(e >= 0);
   assert(e <= 1650);
-  return (((uint32_t) e) * 78913) >> 18;
+  return (static_cast<uint32_t>(e) * 78913) >> 18;
 }
 
 // Returns floor(log_10(5^e)).
@@ -58,7 +58,7 @@ static inline uint32_t log10Pow5(const int32_t e) {
   // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
   assert(e >= 0);
   assert(e <= 2620);
-  return (((uint32_t) e) * 732923) >> 20;
+  return (static_cast<uint32_t>(e) * 732923) >> 20;
 }
 
 static inline uint32_t float_to_bits(const float f) {

@@ -78,17 +78,17 @@ static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const i
 
   // The casts here help MSVC to avoid calls to the __allmul library
   // function.
-  const uint32_t factorLo = (uint32_t)(factor);
-  const uint32_t factorHi = (uint32_t)(factor >> 32);
-  const uint64_t bits0 = (uint64_t)m * factorLo;
-  const uint64_t bits1 = (uint64_t)m * factorHi;
+  const uint32_t factorLo = static_cast<uint32_t>(factor);
+  const uint32_t factorHi = static_cast<uint32_t>(factor >> 32);
+  const uint64_t bits0 = static_cast<uint64_t>(m) * factorLo;
+  const uint64_t bits1 = static_cast<uint64_t>(m) * factorHi;
 
 #ifdef RYU_32_BIT_PLATFORM
   // On 32-bit platforms we can avoid a 64-bit shift-right since we only
   // need the upper 32 bits of the result and the shift value is > 32.
-  const uint32_t bits0Hi = (uint32_t)(bits0 >> 32);
-  uint32_t bits1Lo = (uint32_t)(bits1);
-  uint32_t bits1Hi = (uint32_t)(bits1 >> 32);
+  const uint32_t bits0Hi = static_cast<uint32_t>(bits0 >> 32);
+  uint32_t bits1Lo = static_cast<uint32_t>(bits1);
+  uint32_t bits1Hi = static_cast<uint32_t>(bits1 >> 32);
   bits1Lo += bits0Hi;
   bits1Hi += (bits1Lo < bits0Hi);
   const int32_t s = shift - 32;
@@ -97,7 +97,7 @@ static inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const i
   const uint64_t sum = (bits0 >> 32) + bits1;
   const uint64_t shiftedSum = sum >> (shift - 32);
   assert(shiftedSum <= UINT32_MAX);
-  return (uint32_t) shiftedSum;
+  return static_cast<uint32_t>(shiftedSum);
 #endif // RYU_32_BIT_PLATFORM
 }
 
@@ -123,7 +123,7 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
     e2 = 1 - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
     m2 = ieeeMantissa;
   } else {
-    e2 = (int32_t) ieeeExponent - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
+    e2 = static_cast<int32_t>(ieeeExponent) - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
     m2 = (1u << FLOAT_MANTISSA_BITS) | ieeeMantissa;
   }
   const bool even = (m2 & 1) == 0;
@@ -144,9 +144,9 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
   uint8_t lastRemovedDigit = 0;
   if (e2 >= 0) {
     const uint32_t q = log10Pow2(e2);
-    e10 = (int32_t) q;
-    const int32_t k = FLOAT_POW5_INV_BITCOUNT + pow5bits((int32_t) q) - 1;
-    const int32_t i = -e2 + (int32_t) q + k;
+    e10 = static_cast<int32_t>(q);
+    const int32_t k = FLOAT_POW5_INV_BITCOUNT + pow5bits(static_cast<int32_t>(q)) - 1;
+    const int32_t i = -e2 + static_cast<int32_t>(q) + k;
     vr = mulPow5InvDivPow2(mv, q, i);
     vp = mulPow5InvDivPow2(mp, q, i);
     vm = mulPow5InvDivPow2(mm, q, i);
@@ -154,8 +154,9 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
       // We need to know one removed digit even if we are not going to loop below. We could use
       // q = X - 1 above, except that would require 33 bits for the result, and we've found that
       // 32-bit arithmetic is faster even on 64-bit machines.
-      const int32_t l = FLOAT_POW5_INV_BITCOUNT + pow5bits((int32_t) (q - 1)) - 1;
-      lastRemovedDigit = (uint8_t) (mulPow5InvDivPow2(mv, q - 1, -e2 + (int32_t) q - 1 + l) % 10);
+      const int32_t l = FLOAT_POW5_INV_BITCOUNT + pow5bits(static_cast<int32_t>(q - 1)) - 1;
+      lastRemovedDigit = static_cast<uint8_t>(mulPow5InvDivPow2(mv, q - 1,
+        -e2 + static_cast<int32_t>(q) - 1 + l) % 10);
     }
     if (q <= 9) {
       // The largest power of 5 that fits in 24 bits is 5^10, but q <= 9 seems to be safe as well.
@@ -170,16 +171,16 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
     }
   } else {
     const uint32_t q = log10Pow5(-e2);
-    e10 = (int32_t) q + e2;
-    const int32_t i = -e2 - (int32_t) q;
+    e10 = static_cast<int32_t>(q) + e2;
+    const int32_t i = -e2 - static_cast<int32_t>(q);
     const int32_t k = pow5bits(i) - FLOAT_POW5_BITCOUNT;
-    int32_t j = (int32_t) q - k;
-    vr = mulPow5divPow2(mv, (uint32_t) i, j);
-    vp = mulPow5divPow2(mp, (uint32_t) i, j);
-    vm = mulPow5divPow2(mm, (uint32_t) i, j);
+    int32_t j = static_cast<int32_t>(q) - k;
+    vr = mulPow5divPow2(mv, static_cast<uint32_t>(i), j);
+    vp = mulPow5divPow2(mp, static_cast<uint32_t>(i), j);
+    vm = mulPow5divPow2(mm, static_cast<uint32_t>(i), j);
     if (q != 0 && (vp - 1) / 10 <= vm / 10) {
-      j = (int32_t) q - 1 - (pow5bits(i + 1) - FLOAT_POW5_BITCOUNT);
-      lastRemovedDigit = (uint8_t) (mulPow5divPow2(mv, (uint32_t) (i + 1), j) % 10);
+      j = static_cast<int32_t>(q) - 1 - (pow5bits(i + 1) - FLOAT_POW5_BITCOUNT);
+      lastRemovedDigit = static_cast<uint8_t>(mulPow5divPow2(mv, static_cast<uint32_t>(i + 1), j) % 10);
     }
     if (q <= 1) {
       // {vr,vp,vm} is trailing zeros if {mv,mp,mm} has at least q trailing 0 bits.
@@ -211,7 +212,7 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
       vmIsTrailingZeros &= vm % 10 == 0;
 #endif
       vrIsTrailingZeros &= lastRemovedDigit == 0;
-      lastRemovedDigit = (uint8_t) (vr % 10);
+      lastRemovedDigit = static_cast<uint8_t>(vr % 10);
       vr /= 10;
       vp /= 10;
       vm /= 10;
@@ -220,7 +221,7 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
     if (vmIsTrailingZeros) {
       while (vm % 10 == 0) {
         vrIsTrailingZeros &= lastRemovedDigit == 0;
-        lastRemovedDigit = (uint8_t) (vr % 10);
+        lastRemovedDigit = static_cast<uint8_t>(vr % 10);
         vr /= 10;
         vp /= 10;
         vm /= 10;
@@ -238,7 +239,7 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
     // Loop iterations below (approximately):
     // 0: 13.6%, 1: 70.7%, 2: 14.1%, 3: 1.39%, 4: 0.14%, 5+: 0.01%
     while (vp / 10 > vm / 10) {
-      lastRemovedDigit = (uint8_t) (vr % 10);
+      lastRemovedDigit = static_cast<uint8_t>(vr % 10);
       vr /= 10;
       vp /= 10;
       vm /= 10;
@@ -287,7 +288,7 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
     result[2] = DIGIT_TABLE[c + 1];
     result[0] = DIGIT_TABLE[c];
   } else {
-    result[0] = (char) ('0' + output);
+    result[0] = static_cast<char>('0' + output);
   }
 
   // Print decimal point if needed.
@@ -301,7 +302,7 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
 
   // Print the exponent.
   result[index++] = 'E';
-  int32_t exp = v.exponent + (int32_t) olength - 1;
+  int32_t exp = v.exponent + static_cast<int32_t>(olength) - 1;
   if (exp < 0) {
     result[index++] = '-';
     exp = -exp;
@@ -311,7 +312,7 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
     memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
     index += 2;
   } else {
-    result[index++] = (char) ('0' + exp);
+    result[index++] = static_cast<char>('0' + exp);
   }
 
   return index;

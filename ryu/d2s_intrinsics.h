@@ -30,36 +30,36 @@ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const
   // Check this here in case a future change requires larger shift
   // values. In this case this function needs to be adjusted.
   assert(dist < 64);
-  return __shiftright128(lo, hi, (unsigned char) dist);
+  return __shiftright128(lo, hi, static_cast<unsigned char>(dist));
 }
 
 #else // defined(HAS_64_BIT_INTRINSICS)
 
 static inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
   // The casts here help MSVC to avoid calls to the __allmul library function.
-  const uint32_t aLo = (uint32_t)a;
-  const uint32_t aHi = (uint32_t)(a >> 32);
-  const uint32_t bLo = (uint32_t)b;
-  const uint32_t bHi = (uint32_t)(b >> 32);
+  const uint32_t aLo = static_cast<uint32_t>(a);
+  const uint32_t aHi = static_cast<uint32_t>(a >> 32);
+  const uint32_t bLo = static_cast<uint32_t>(b);
+  const uint32_t bHi = static_cast<uint32_t>(b >> 32);
 
-  const uint64_t b00 = (uint64_t)aLo * bLo;
-  const uint64_t b01 = (uint64_t)aLo * bHi;
-  const uint64_t b10 = (uint64_t)aHi * bLo;
-  const uint64_t b11 = (uint64_t)aHi * bHi;
+  const uint64_t b00 = static_cast<uint64_t>(aLo) * bLo;
+  const uint64_t b01 = static_cast<uint64_t>(aLo) * bHi;
+  const uint64_t b10 = static_cast<uint64_t>(aHi) * bLo;
+  const uint64_t b11 = static_cast<uint64_t>(aHi) * bHi;
 
-  const uint32_t b00Lo = (uint32_t)b00;
-  const uint32_t b00Hi = (uint32_t)(b00 >> 32);
+  const uint32_t b00Lo = static_cast<uint32_t>(b00);
+  const uint32_t b00Hi = static_cast<uint32_t>(b00 >> 32);
 
   const uint64_t mid1 = b10 + b00Hi;
-  const uint32_t mid1Lo = (uint32_t)(mid1);
-  const uint32_t mid1Hi = (uint32_t)(mid1 >> 32);
+  const uint32_t mid1Lo = static_cast<uint32_t>(mid1);
+  const uint32_t mid1Hi = static_cast<uint32_t>(mid1 >> 32);
 
   const uint64_t mid2 = b01 + mid1Lo;
-  const uint32_t mid2Lo = (uint32_t)(mid2);
-  const uint32_t mid2Hi = (uint32_t)(mid2 >> 32);
+  const uint32_t mid2Lo = static_cast<uint32_t>(mid2);
+  const uint32_t mid2Hi = static_cast<uint32_t>(mid2 >> 32);
 
   const uint64_t pHi = b11 + mid1Hi + mid2Hi;
-  const uint64_t pLo = ((uint64_t)mid2Lo << 32) | b00Lo;
+  const uint64_t pLo = (static_cast<uint64_t>(mid2Lo) << 32) | b00Lo;
 
   *productHi = pHi;
   return pLo;
@@ -74,7 +74,7 @@ static inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const
 #else
   // Avoid a 64-bit shift by taking advantage of the range of shift values.
   assert(dist >= 32);
-  return (hi << (64 - dist)) | ((uint32_t)(lo >> 32) >> (dist - 32));
+  return (hi << (64 - dist)) | (static_cast<uint32_t>(lo >> 32) >> (dist - 32));
 #endif
 }
 
@@ -129,15 +129,15 @@ static inline uint64_t div1e9(const uint64_t x) {
 
 static inline uint32_t mod1e9(const uint64_t x) {
   // Avoid 64-bit math as much as possible.
-  // Returning (uint32_t) (x - 1000000000 * div1e9(x)) would
+  // Returning static_cast<uint32_t>(x - 1000000000 * div1e9(x)) would
   // perform 32x64-bit multiplication and 64-bit subtraction.
   // x and 1000000000 * div1e9(x) are guaranteed to differ by
   // less than 10^9, so their highest 32 bits must be identical,
   // so we can truncate both sides to uint32_t before subtracting.
-  // We can also simplify (uint32_t) (1000000000 * div1e9(x)).
+  // We can also simplify static_cast<uint32_t>(1000000000 * div1e9(x)).
   // We can truncate before multiplying instead of after, as multiplying
   // the highest 32 bits of div1e9(x) can't affect the lowest 32 bits.
-  return ((uint32_t) x) - 1000000000 * ((uint32_t) div1e9(x));
+  return static_cast<uint32_t>(x) - 1000000000 * static_cast<uint32_t>(div1e9(x));
 }
 
 #else // RYU_32_BIT_PLATFORM
@@ -163,7 +163,7 @@ static inline uint64_t div1e9(const uint64_t x) {
 }
 
 static inline uint32_t mod1e9(const uint64_t x) {
-  return (uint32_t) (x - 1000000000 * div1e9(x));
+  return static_cast<uint32_t>(x - 1000000000 * div1e9(x));
 }
 
 #endif // RYU_32_BIT_PLATFORM
@@ -173,7 +173,7 @@ static inline uint32_t pow5Factor(uint64_t value) {
   for (;;) {
     assert(value != 0);
     const uint64_t q = div5(value);
-    const uint32_t r = ((uint32_t) value) - 5 * ((uint32_t) q);
+    const uint32_t r = static_cast<uint32_t>(value) - 5 * static_cast<uint32_t>(q);
     if (r != 0) {
       break;
     }

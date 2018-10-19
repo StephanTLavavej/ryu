@@ -93,13 +93,13 @@ static inline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const 
   const uint64_t lo2 = lo + mul[0];
   const uint64_t mid2 = mid + mul[1] + (lo2 < lo);
   const uint64_t hi2 = hi + (mid2 < mid);
-  *vp = shiftright128(mid2, hi2, (uint32_t) (j - 64 - 1));
+  *vp = shiftright128(mid2, hi2, static_cast<uint32_t>(j - 64 - 1));
 
   if (mmShift == 1) {
     const uint64_t lo3 = lo - mul[0];
     const uint64_t mid3 = mid - mul[1] - (lo3 > lo);
     const uint64_t hi3 = hi - (mid3 > mid);
-    *vm = shiftright128(mid3, hi3, (uint32_t) (j - 64 - 1));
+    *vm = shiftright128(mid3, hi3, static_cast<uint32_t>(j - 64 - 1));
   } else {
     const uint64_t lo3 = lo + lo;
     const uint64_t mid3 = mid + mid + (lo3 < lo);
@@ -107,10 +107,10 @@ static inline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const 
     const uint64_t lo4 = lo3 - mul[0];
     const uint64_t mid4 = mid3 - mul[1] - (lo4 > lo3);
     const uint64_t hi4 = hi3 - (mid4 > mid3);
-    *vm = shiftright128(mid4, hi4, (uint32_t) (j - 64));
+    *vm = shiftright128(mid4, hi4, static_cast<uint32_t>(j - 64));
   }
 
-  return shiftright128(mid, hi, (uint32_t) (j - 64 - 1));
+  return shiftright128(mid, hi, static_cast<uint32_t>(j - 64 - 1));
 }
 
 #endif // HAS_64_BIT_INTRINSICS
@@ -154,7 +154,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     e2 = 1 - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS - 2;
     m2 = ieeeMantissa;
   } else {
-    e2 = (int32_t) ieeeExponent - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS - 2;
+    e2 = static_cast<int32_t>(ieeeExponent) - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS - 2;
     m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   }
   const bool even = (m2 & 1) == 0;
@@ -177,15 +177,15 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     // I tried special-casing q == 0, but there was no effect on performance.
     // This expression is slightly faster than max(0, log10Pow2(e2) - 1).
     const uint32_t q = log10Pow2(e2) - (e2 > 3);
-    e10 = (int32_t) q;
-    const int32_t k = DOUBLE_POW5_INV_BITCOUNT + pow5bits((int32_t) q) - 1;
-    const int32_t i = -e2 + (int32_t) q + k;
+    e10 = static_cast<int32_t>(q);
+    const int32_t k = DOUBLE_POW5_INV_BITCOUNT + pow5bits(static_cast<int32_t>(q)) - 1;
+    const int32_t i = -e2 + static_cast<int32_t>(q) + k;
     vr = mulShiftAll(m2, DOUBLE_POW5_INV_SPLIT[q], i, &vp, &vm, mmShift);
     if (q <= 21) {
       // This should use q <= 22, but I think 21 is also safe. Smaller values
       // may still be safe, but it's more difficult to reason about them.
       // Only one of mp, mv, and mm can be a multiple of 5, if any.
-      const uint32_t mvMod5 = ((uint32_t) mv) - 5 * ((uint32_t) div5(mv));
+      const uint32_t mvMod5 = static_cast<uint32_t>(mv) - 5 * static_cast<uint32_t>(div5(mv));
       if (mvMod5 == 0) {
         vrIsTrailingZeros = multipleOfPowerOf5(mv, q);
       } else if (acceptBounds) {
@@ -201,10 +201,10 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
   } else {
     // This expression is slightly faster than max(0, log10Pow5(-e2) - 1).
     const uint32_t q = log10Pow5(-e2) - (-e2 > 1);
-    e10 = (int32_t) q + e2;
-    const int32_t i = -e2 - (int32_t) q;
+    e10 = static_cast<int32_t>(q) + e2;
+    const int32_t i = -e2 - static_cast<int32_t>(q);
     const int32_t k = pow5bits(i) - DOUBLE_POW5_BITCOUNT;
-    const int32_t j = (int32_t) q - k;
+    const int32_t j = static_cast<int32_t>(q) - k;
     vr = mulShiftAll(m2, DOUBLE_POW5_SPLIT[i], j, &vp, &vm, mmShift);
     if (q <= 1) {
       // {vr,vp,vm} is trailing zeros if {mv,mp,mm} has at least q trailing 0 bits.
@@ -240,12 +240,12 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
       if (vpDiv10 <= vmDiv10) {
         break;
       }
-      const uint32_t vmMod10 = ((uint32_t) vm) - 10 * ((uint32_t) vmDiv10);
+      const uint32_t vmMod10 = static_cast<uint32_t>(vm) - 10 * static_cast<uint32_t>(vmDiv10);
       const uint64_t vrDiv10 = div10(vr);
-      const uint32_t vrMod10 = ((uint32_t) vr) - 10 * ((uint32_t) vrDiv10);
+      const uint32_t vrMod10 = static_cast<uint32_t>(vr) - 10 * static_cast<uint32_t>(vrDiv10);
       vmIsTrailingZeros &= vmMod10 == 0;
       vrIsTrailingZeros &= lastRemovedDigit == 0;
-      lastRemovedDigit = (uint8_t) vrMod10;
+      lastRemovedDigit = static_cast<uint8_t>(vrMod10);
       vr = vrDiv10;
       vp = vpDiv10;
       vm = vmDiv10;
@@ -254,15 +254,15 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     if (vmIsTrailingZeros) {
       for (;;) {
         const uint64_t vmDiv10 = div10(vm);
-        const uint32_t vmMod10 = ((uint32_t) vm) - 10 * ((uint32_t) vmDiv10);
+        const uint32_t vmMod10 = static_cast<uint32_t>(vm) - 10 * static_cast<uint32_t>(vmDiv10);
         if (vmMod10 != 0) {
           break;
         }
         const uint64_t vpDiv10 = div10(vp);
         const uint64_t vrDiv10 = div10(vr);
-        const uint32_t vrMod10 = ((uint32_t) vr) - 10 * ((uint32_t) vrDiv10);
+        const uint32_t vrMod10 = static_cast<uint32_t>(vr) - 10 * static_cast<uint32_t>(vrDiv10);
         vrIsTrailingZeros &= lastRemovedDigit == 0;
-        lastRemovedDigit = (uint8_t) vrMod10;
+        lastRemovedDigit = static_cast<uint8_t>(vrMod10);
         vr = vrDiv10;
         vp = vpDiv10;
         vm = vmDiv10;
@@ -282,7 +282,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
     const uint64_t vmDiv100 = div100(vm);
     if (vpDiv100 > vmDiv100) { // Optimization: remove two digits at a time (~86.2%).
       const uint64_t vrDiv100 = div100(vr);
-      const uint32_t vrMod100 = ((uint32_t) vr) - 100 * ((uint32_t) vrDiv100);
+      const uint32_t vrMod100 = static_cast<uint32_t>(vr) - 100 * static_cast<uint32_t>(vrDiv100);
       roundUp = vrMod100 >= 50;
       vr = vrDiv100;
       vp = vpDiv100;
@@ -300,7 +300,7 @@ static inline floating_decimal_64 d2d(const uint64_t ieeeMantissa, const uint32_
         break;
       }
       const uint64_t vrDiv10 = div10(vr);
-      const uint32_t vrMod10 = ((uint32_t) vr) - 10 * ((uint32_t) vrDiv10);
+      const uint32_t vrMod10 = static_cast<uint32_t>(vr) - 10 * static_cast<uint32_t>(vrDiv10);
       roundUp = vrMod10 >= 5;
       vr = vrDiv10;
       vp = vpDiv10;
@@ -332,7 +332,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
   if ((output >> 32) != 0) {
     // Expensive 64-bit division.
     const uint64_t q = div1e8(output);
-    uint32_t output2 = ((uint32_t) output) - 100000000 * ((uint32_t) q);
+    uint32_t output2 = static_cast<uint32_t>(output) - 100000000 * static_cast<uint32_t>(q);
     output = q;
 
     const uint32_t c = output2 % 10000;
@@ -348,7 +348,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
     memcpy(result + olength - i - 7, DIGIT_TABLE + d1, 2);
     i += 8;
   }
-  uint32_t output2 = (uint32_t) output;
+  uint32_t output2 = static_cast<uint32_t>(output);
   while (output2 >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
     const uint32_t c = output2 - 10000 * (output2 / 10000);
@@ -374,7 +374,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
     result[2] = DIGIT_TABLE[c + 1];
     result[0] = DIGIT_TABLE[c];
   } else {
-    result[0] = (char) ('0' + output2);
+    result[0] = static_cast<char>('0' + output2);
   }
 
   // Print decimal point if needed.
@@ -388,7 +388,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
 
   // Print the exponent.
   result[index++] = 'E';
-  int32_t exp = v.exponent + (int32_t) olength - 1;
+  int32_t exp = v.exponent + static_cast<int32_t>(olength) - 1;
   if (exp < 0) {
     result[index++] = '-';
     exp = -exp;
@@ -397,13 +397,13 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
   if (exp >= 100) {
     const int32_t c = exp % 10;
     memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
-    result[index + 2] = (char) ('0' + c);
+    result[index + 2] = static_cast<char>('0' + c);
     index += 3;
   } else if (exp >= 10) {
     memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
     index += 2;
   } else {
-    result[index++] = (char) ('0' + exp);
+    result[index++] = static_cast<char>('0' + exp);
   }
 
   return index;
@@ -412,7 +412,7 @@ static inline int to_chars(const floating_decimal_64 v, char* const result) {
 static inline bool d2d_small_int(const uint64_t ieeeMantissa, const uint32_t ieeeExponent,
   floating_decimal_64* const v) {
   const uint64_t m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
-  const int32_t e2 = (int32_t) ieeeExponent - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
+  const int32_t e2 = static_cast<int32_t>(ieeeExponent) - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
 
   if (e2 > 0) {
     // f = m2 * 2^e2 >= 2^53 is an integer.
@@ -453,7 +453,7 @@ int d2s_buffered_n(const double f, char* const result) {
 
   // Decode bits into mantissa and exponent.
   const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
+  const uint32_t ieeeExponent = static_cast<uint32_t>(bits >> DOUBLE_MANTISSA_BITS);
 
   floating_decimal_64 v;
   const bool isSmallInt = d2d_small_int(ieeeMantissa, ieeeExponent, &v);
@@ -464,7 +464,7 @@ int d2s_buffered_n(const double f, char* const result) {
     // trailing zeros in to_chars only if needed - once fixed-point notation output is implemented.)
     for (;;) {
       const uint64_t q = div10(v.mantissa);
-      const uint32_t r = ((uint32_t) v.mantissa) - 10 * ((uint32_t) q);
+      const uint32_t r = static_cast<uint32_t>(v.mantissa) - 10 * static_cast<uint32_t>(q);
       if (r != 0) {
         break;
       }

@@ -48,9 +48,9 @@ static inline uint32_t uint128_mod1e9(const uint64_t vHi, const uint64_t vLo) {
   const uint64_t multiplied = umul256_hi128_lo64(vHi, vLo, 0x89705F4136B4A597u, 0x31680A88F8953031u);
 
   // For uint32_t truncation, see the mod1e9() comment in d2s_intrinsics.h.
-  const uint32_t shifted = (uint32_t) (multiplied >> 29);
+  const uint32_t shifted = static_cast<uint32_t>(multiplied >> 29);
 
-  return ((uint32_t) vLo) - 1000000000 * shifted;
+  return static_cast<uint32_t>(vLo) - 1000000000 * shifted;
 }
 #endif // HAS_64_BIT_INTRINSICS
 
@@ -71,7 +71,7 @@ static inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const m
   assert(j >= 128);
   assert(j <= 180);
 #if defined(HAS_64_BIT_INTRINSICS)
-  const uint32_t dist = (uint32_t) (j - 128); // dist: [0, 52]
+  const uint32_t dist = static_cast<uint32_t>(j - 128); // dist: [0, 52]
   const uint64_t shiftedhigh = s1high >> dist;
   const uint64_t shiftedlow = shiftright128(s1low, s1high, dist);
   return uint128_mod1e9(shiftedhigh, shiftedlow);
@@ -114,7 +114,7 @@ static inline void append_n_digits(const uint32_t olength, uint32_t digits, char
     const uint32_t c = digits << 1;
     memcpy(result + olength - i - 2, DIGIT_TABLE + c, 2);
   } else {
-    result[0] = (char) ('0' + digits);
+    result[0] = static_cast<char>('0' + digits);
   }
 }
 
@@ -146,7 +146,7 @@ static inline void append_d_digits(const uint32_t olength, uint32_t digits, char
     result[0] = DIGIT_TABLE[c];
   } else {
     result[1] = '.';
-    result[0] = (char) ('0' + digits);
+    result[0] = static_cast<char>('0' + digits);
   }
 }
 
@@ -158,7 +158,7 @@ static inline void append_c_digits(const uint32_t count, uint32_t digits, char* 
     memcpy(result + count - i - 2, DIGIT_TABLE + c, 2);
   }
   if (i < count) {
-    const char c = (char) ('0' + (digits % 10));
+    const char c = static_cast<char>('0' + (digits % 10));
     result[count - i - 1] = c;
   }
 }
@@ -181,7 +181,7 @@ static inline void append_nine_digits(uint32_t digits, char* const result) {
     memcpy(result + 7 - i, DIGIT_TABLE + c0, 2);
     memcpy(result + 5 - i, DIGIT_TABLE + c1, 2);
   }
-  result[0] = (char) ('0' + digits);
+  result[0] = static_cast<char>('0' + digits);
 }
 
 static inline uint32_t indexForExponent(const uint32_t e) {
@@ -194,7 +194,7 @@ static inline uint32_t pow10BitsForIndex(const uint32_t idx) {
 
 static inline uint32_t lengthForIndex(const uint32_t idx) {
   // +1 for ceil, +16 for mantissa, +8 to round up when dividing by 9
-  return (log10Pow2(16 * (int32_t) idx) + 1 + 16 + 8) / 9;
+  return (log10Pow2(16 * static_cast<int32_t>(idx)) + 1 + 16 + 8) / 9;
 }
 
 int d2fixed_buffered_n(const double d, const uint32_t precision, char* const result) {
@@ -214,7 +214,7 @@ int d2fixed_buffered_n(const double d, const uint32_t precision, char* const res
 
   // Decode bits into mantissa and exponent.
   const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
+  const uint32_t ieeeExponent = static_cast<uint32_t>(bits >> DOUBLE_MANTISSA_BITS);
 
   int32_t e2;
   uint64_t m2;
@@ -222,21 +222,21 @@ int d2fixed_buffered_n(const double d, const uint32_t precision, char* const res
     e2 = 1 - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
     m2 = ieeeMantissa;
   } else {
-    e2 = (int32_t) ieeeExponent - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
+    e2 = static_cast<int32_t>(ieeeExponent) - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
     m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   }
 
   int index = 0;
   bool nonzero = false;
   if (e2 >= -52) {
-    const uint32_t idx = e2 < 0 ? 0 : indexForExponent((uint32_t) e2);
+    const uint32_t idx = e2 < 0 ? 0 : indexForExponent(static_cast<uint32_t>(e2));
     const uint32_t p10bits = pow10BitsForIndex(idx);
-    const int32_t len = (int32_t) lengthForIndex(idx);
+    const int32_t len = static_cast<int32_t>(lengthForIndex(idx));
     for (int32_t i = len - 1; i >= 0; --i) {
       const uint32_t j = p10bits - e2;
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in mulShift_mod1e9. Instead, we can just increase the multipliers.
-      const uint32_t digits = mulShift_mod1e9(m2 << 8, POW10_SPLIT[POW10_OFFSET[idx] + i], (int32_t) (j + 8));
+      const uint32_t digits = mulShift_mod1e9(m2 << 8, POW10_SPLIT[POW10_OFFSET[idx] + i], static_cast<int32_t>(j + 8));
       if (nonzero) {
         append_nine_digits(digits, result + index);
         index += 9;
@@ -297,9 +297,9 @@ int d2fixed_buffered_n(const double d, const uint32_t precision, char* const res
           roundUp = lastDigit > 5;
         } else {
           // Is m * 10^(additionalDigits + 1) / 2^(-e2) integer?
-          const int32_t requiredTwos = -e2 - (int32_t) precision - 1;
+          const int32_t requiredTwos = -e2 - static_cast<int32_t>(precision) - 1;
           const bool trailingZeros = requiredTwos <= 0
-            || (requiredTwos < 60 && multipleOfPowerOf2(m2, (uint32_t) requiredTwos));
+            || (requiredTwos < 60 && multipleOfPowerOf2(m2, static_cast<uint32_t>(requiredTwos)));
           roundUp = trailingZeros ? 2 : 1;
         }
         if (maximum > 0) {
@@ -366,7 +366,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
 
   // Decode bits into mantissa and exponent.
   const uint64_t ieeeMantissa = bits & ((1ull << DOUBLE_MANTISSA_BITS) - 1);
-  const uint32_t ieeeExponent = (uint32_t) (bits >> DOUBLE_MANTISSA_BITS);
+  const uint32_t ieeeExponent = static_cast<uint32_t>(bits >> DOUBLE_MANTISSA_BITS);
 
   int32_t e2;
   uint64_t m2;
@@ -374,7 +374,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
     e2 = 1 - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
     m2 = ieeeMantissa;
   } else {
-    e2 = (int32_t) ieeeExponent - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
+    e2 = static_cast<int32_t>(ieeeExponent) - DOUBLE_BIAS - DOUBLE_MANTISSA_BITS;
     m2 = (1ull << DOUBLE_MANTISSA_BITS) | ieeeMantissa;
   }
 
@@ -386,14 +386,14 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
   uint32_t availableDigits = 0;
   int32_t exp = 0;
   if (e2 >= -52) {
-    const uint32_t idx = e2 < 0 ? 0 : indexForExponent((uint32_t) e2);
+    const uint32_t idx = e2 < 0 ? 0 : indexForExponent(static_cast<uint32_t>(e2));
     const uint32_t p10bits = pow10BitsForIndex(idx);
-    const int32_t len = (int32_t) lengthForIndex(idx);
+    const int32_t len = static_cast<int32_t>(lengthForIndex(idx));
     for (int32_t i = len - 1; i >= 0; --i) {
       const uint32_t j = p10bits - e2;
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in mulShift_mod1e9. Instead, we can just increase the multipliers.
-      digits = mulShift_mod1e9(m2 << 8, POW10_SPLIT[POW10_OFFSET[idx] + i], (int32_t) (j + 8));
+      digits = mulShift_mod1e9(m2 << 8, POW10_SPLIT[POW10_OFFSET[idx] + i], static_cast<int32_t>(j + 8));
       if (printedDigits != 0) {
         if (printedDigits + 9 > precision) {
           availableDigits = 9;
@@ -404,7 +404,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
         printedDigits += 9;
       } else if (digits != 0) {
         availableDigits = decimalLength9(digits);
-        exp = i * 9 + (int32_t) availableDigits - 1;
+        exp = i * 9 + static_cast<int32_t>(availableDigits) - 1;
         if (availableDigits > precision) {
           break;
         }
@@ -412,7 +412,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
           append_d_digits(availableDigits, digits, result + index);
           index += availableDigits + 1; // +1 for decimal point
         } else {
-          result[index++] = (char) ('0' + digits);
+          result[index++] = static_cast<char>('0' + digits);
         }
         printedDigits = availableDigits;
         availableDigits = 0;
@@ -424,7 +424,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
     const int32_t idx = -e2 / 16;
     for (int32_t i = MIN_BLOCK_2[idx]; i < 200; ++i) {
       const int32_t j = ADDITIONAL_BITS_2 + (-e2 - 16 * idx);
-      const uint32_t p = POW10_OFFSET_2[idx] + (uint32_t) i - MIN_BLOCK_2[idx];
+      const uint32_t p = POW10_OFFSET_2[idx] + static_cast<uint32_t>(i) - MIN_BLOCK_2[idx];
       // Temporary: j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in mulShift_mod1e9. Instead, we can just increase the multipliers.
       digits = (p >= POW10_OFFSET_2[idx + 1]) ? 0 : mulShift_mod1e9(m2 << 8, POW10_SPLIT_2[p], j + 8);
@@ -438,7 +438,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
         printedDigits += 9;
       } else if (digits != 0) {
         availableDigits = decimalLength9(digits);
-        exp = -(i + 1) * 9 + (int32_t) availableDigits - 1;
+        exp = -(i + 1) * 9 + static_cast<int32_t>(availableDigits) - 1;
         if (availableDigits > precision) {
           break;
         }
@@ -446,7 +446,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
           append_d_digits(availableDigits, digits, result + index);
           index += availableDigits + 1; // +1 for decimal point
         } else {
-          result[index++] = (char) ('0' + digits);
+          result[index++] = static_cast<char>('0' + digits);
         }
         printedDigits = availableDigits;
         availableDigits = 0;
@@ -472,13 +472,13 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
   } else {
     // Is m * 2^e2 * 10^(precision + 1 - exp) integer?
     // precision was already increased by 1, so we don't need to write + 1 here.
-    const int32_t rexp = (int32_t) precision - exp;
+    const int32_t rexp = static_cast<int32_t>(precision) - exp;
     const int32_t requiredTwos = -e2 - rexp;
     bool trailingZeros = requiredTwos <= 0
-      || (requiredTwos < 60 && multipleOfPowerOf2(m2, (uint32_t) requiredTwos));
+      || (requiredTwos < 60 && multipleOfPowerOf2(m2, static_cast<uint32_t>(requiredTwos)));
     if (rexp < 0) {
       const int32_t requiredFives = -rexp;
-      trailingZeros = trailingZeros && multipleOfPowerOf5(m2, (uint32_t) requiredFives);
+      trailingZeros = trailingZeros && multipleOfPowerOf5(m2, static_cast<uint32_t>(requiredFives));
     }
     roundUp = trailingZeros ? 2 : 1;
   }
@@ -494,7 +494,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
       append_d_digits(maximum, digits, result + index);
       index += maximum + 1; // +1 for decimal point
     } else {
-      result[index++] = (char) ('0' + digits);
+      result[index++] = static_cast<char>('0' + digits);
     }
   }
   if (roundUp != 0) {
@@ -533,7 +533,7 @@ int d2exp_buffered_n(const double d, uint32_t precision, char* const result) {
   if (exp >= 100) {
     const int32_t c = exp % 10;
     memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
-    result[index + 2] = (char) ('0' + c);
+    result[index + 2] = static_cast<char>('0' + c);
     index += 3;
   } else {
     memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
