@@ -257,8 +257,6 @@ static inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uint32_
 
 static inline int to_chars(const floating_decimal_32 v, char* const result) {
   // Step 5: Print the decimal representation.
-  int index = 0;
-
   uint32_t output = v.mantissa;
   const uint32_t olength = decimalLength9(output);
 
@@ -273,31 +271,32 @@ static inline int to_chars(const floating_decimal_32 v, char* const result) {
     output /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + index + olength - i - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + index + olength - i - 3, DIGIT_TABLE + c1, 2);
+    memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
+    memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
     i += 4;
   }
   if (output >= 100) {
     const uint32_t c = (output % 100) << 1;
     output /= 100;
-    memcpy(result + index + olength - i - 1, DIGIT_TABLE + c, 2);
+    memcpy(result + olength - i - 1, DIGIT_TABLE + c, 2);
     i += 2;
   }
   if (output >= 10) {
     const uint32_t c = output << 1;
     // We can't use memcpy here: the decimal dot goes between these two digits.
-    result[index + olength - i] = DIGIT_TABLE[c + 1];
-    result[index] = DIGIT_TABLE[c];
+    result[2] = DIGIT_TABLE[c + 1];
+    result[0] = DIGIT_TABLE[c];
   } else {
-    result[index] = (char) ('0' + output);
+    result[0] = (char) ('0' + output);
   }
 
   // Print decimal point if needed.
+  uint32_t index;
   if (olength > 1) {
-    result[index + 1] = '.';
-    index += olength + 1;
+    result[1] = '.';
+    index = olength + 1;
   } else {
-    ++index;
+    index = 1;
   }
 
   // Print the exponent.
