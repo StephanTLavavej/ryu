@@ -69,19 +69,19 @@ _NODISCARD __forceinline uint64_t umul128(const uint64_t a, const uint64_t b, ui
 _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
   // We don't need to handle the case dist >= 64 here (see above).
   assert(dist < 64);
-#if !defined(RYU_32_BIT_PLATFORM)
+#ifdef _WIN64
   assert(dist > 0);
   return (hi << (64 - dist)) | (lo >> dist);
-#else
+#else // ^^^ 64-bit ^^^ / vvv 32-bit vvv
   // Avoid a 64-bit shift by taking advantage of the range of shift values.
   assert(dist >= 32);
   return (hi << (64 - dist)) | (static_cast<uint32_t>(lo >> 32) >> (dist - 32));
-#endif
+#endif // ^^^ 32-bit ^^^
 }
 
 #endif // defined(HAS_64_BIT_INTRINSICS)
 
-#ifdef RYU_32_BIT_PLATFORM
+#ifndef _WIN64
 
 // Returns the high 64 bits of the 128-bit product of a and b.
 _NODISCARD inline uint64_t umulh(const uint64_t a, const uint64_t b) {
@@ -138,7 +138,7 @@ _NODISCARD inline uint32_t mod1e9(const uint64_t x) {
   return static_cast<uint32_t>(x) - 1000000000 * static_cast<uint32_t>(div1e9(x));
 }
 
-#else // RYU_32_BIT_PLATFORM
+#else // ^^^ 32-bit ^^^ / vvv 64-bit vvv
 
 _NODISCARD inline uint64_t div5(const uint64_t x) {
   return x / 5;
@@ -164,7 +164,7 @@ _NODISCARD inline uint32_t mod1e9(const uint64_t x) {
   return static_cast<uint32_t>(x - 1000000000 * div1e9(x));
 }
 
-#endif // RYU_32_BIT_PLATFORM
+#endif // ^^^ 64-bit ^^^
 
 _NODISCARD inline uint32_t pow5Factor(uint64_t value) {
   uint32_t count = 0;

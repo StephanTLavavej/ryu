@@ -15,10 +15,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#if defined(_M_IX86) || defined(_M_ARM)
-#define RYU_32_BIT_PLATFORM
-#endif
-
 _NODISCARD inline uint32_t decimalLength9(const uint32_t v) {
   // Function precondition: v is not a 10-digit number.
   // (f2s: 9 digits are sufficient for round-tripping.)

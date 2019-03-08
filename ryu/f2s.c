@@ -83,7 +83,7 @@ _NODISCARD inline uint32_t mulShift(const uint32_t m, const uint64_t factor, con
   const uint64_t bits0 = static_cast<uint64_t>(m) * factorLo;
   const uint64_t bits1 = static_cast<uint64_t>(m) * factorHi;
 
-#ifdef RYU_32_BIT_PLATFORM
+#ifndef _WIN64
   // On 32-bit platforms we can avoid a 64-bit shift-right since we only
   // need the upper 32 bits of the result and the shift value is > 32.
   const uint32_t bits0Hi = static_cast<uint32_t>(bits0 >> 32);
@@ -93,12 +93,12 @@ _NODISCARD inline uint32_t mulShift(const uint32_t m, const uint64_t factor, con
   bits1Hi += (bits1Lo < bits0Hi);
   const int32_t s = shift - 32;
   return (bits1Hi << (32 - s)) | (bits1Lo >> s);
-#else // RYU_32_BIT_PLATFORM
+#else // ^^^ 32-bit ^^^ / vvv 64-bit vvv
   const uint64_t sum = (bits0 >> 32) + bits1;
   const uint64_t shiftedSum = sum >> (shift - 32);
   assert(shiftedSum <= UINT32_MAX);
   return static_cast<uint32_t>(shiftedSum);
-#endif // RYU_32_BIT_PLATFORM
+#endif // ^^^ 64-bit ^^^
 }
 
 _NODISCARD inline uint32_t mulPow5InvDivPow2(const uint32_t m, const uint32_t q, const int32_t j) {
