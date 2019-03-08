@@ -204,9 +204,7 @@ _NODISCARD inline floating_decimal_32 f2d(const uint32_t ieeeMantissa, const uin
   if (vmIsTrailingZeros || vrIsTrailingZeros) {
     // General case, which happens rarely (~4.0%).
     while (vp / 10 > vm / 10) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=23106
-      // The compiler does not realize that vm % 10 can be computed from vm / 10
-      // as vm - (vm / 10) * 10.
+#ifdef __clang__ // TRANSITION, LLVM#23106
       vmIsTrailingZeros &= vm - (vm / 10) * 10 == 0;
 #else
       vmIsTrailingZeros &= vm % 10 == 0;
@@ -264,7 +262,7 @@ _NODISCARD inline int to_chars(const floating_decimal_32 v, char* const result) 
   // Print the decimal digits.
   uint32_t i = 0;
   while (output >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+#ifdef __clang__ // TRANSITION, LLVM#38217
     const uint32_t c = output - 10000 * (output / 10000);
 #else
     const uint32_t c = output % 10000;

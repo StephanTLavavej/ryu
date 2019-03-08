@@ -350,7 +350,7 @@ _NODISCARD inline int to_chars(const floating_decimal_64 v, char* const result) 
   }
   uint32_t output2 = static_cast<uint32_t>(output);
   while (output2 >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+#ifdef __clang__ // TRANSITION, LLVM#38217
     const uint32_t c = output2 - 10000 * (output2 / 10000);
 #else
     const uint32_t c = output2 % 10000;

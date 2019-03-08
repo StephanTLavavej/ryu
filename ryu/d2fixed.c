@@ -92,7 +92,7 @@ _NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* con
 inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {
   uint32_t i = 0;
   while (digits >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+#ifdef __clang__ // TRANSITION, LLVM#38217
     const uint32_t c = digits - 10000 * (digits / 10000);
 #else
     const uint32_t c = digits % 10000;
@@ -121,7 +121,7 @@ inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const
 inline void append_d_digits(const uint32_t olength, uint32_t digits, char* const result) {
   uint32_t i = 0;
   while (digits >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+#ifdef __clang__ // TRANSITION, LLVM#38217
     const uint32_t c = digits - 10000 * (digits / 10000);
 #else
     const uint32_t c = digits % 10000;
@@ -170,7 +170,7 @@ inline void append_nine_digits(uint32_t digits, char* const result) {
   }
 
   for (uint32_t i = 0; i < 5; i += 4) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+#ifdef __clang__ // TRANSITION, LLVM#38217
     const uint32_t c = digits - 10000 * (digits / 10000);
 #else
     const uint32_t c = digits % 10000;
