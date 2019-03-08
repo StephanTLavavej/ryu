@@ -63,12 +63,12 @@ _NODISCARD inline uint32_t log10Pow5(const int32_t e) {
 
 _NODISCARD inline uint32_t float_to_bits(const float f) {
   uint32_t bits = 0;
-  memcpy(&bits, &f, sizeof(float));
+  _CSTD memcpy(&bits, &f, sizeof(float));
   return bits;
 }
 
 _NODISCARD inline uint64_t double_to_bits(const double d) {
   uint64_t bits = 0;
-  memcpy(&bits, &d, sizeof(double));
+  _CSTD memcpy(&bits, &d, sizeof(double));
   return bits;
 }

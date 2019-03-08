@@ -272,14 +272,14 @@ _NODISCARD inline int to_chars(const floating_decimal_32 v, char* const result) 
     output /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
     i += 4;
   }
   if (output >= 100) {
     const uint32_t c = (output % 100) << 1;
     output /= 100;
-    memcpy(result + olength - i - 1, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + olength - i - 1, DIGIT_TABLE + c, 2);
     i += 2;
   }
   if (output >= 10) {
@@ -309,7 +309,7 @@ _NODISCARD inline int to_chars(const floating_decimal_32 v, char* const result) 
   }
 
   if (exp >= 10) {
-    memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
+    _CSTD memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
     index += 2;
   } else {
     result[index++] = static_cast<char>('0' + exp);
@@ -324,7 +324,7 @@ _NODISCARD inline int f2s_buffered_n(const float f, char* const result) {
 
   // Case distinction; exit early for the easy cases.
   if (bits == 0) {
-    memcpy(result, "0E0", 3);
+    _CSTD memcpy(result, "0E0", 3);
     return 3;
   }
 

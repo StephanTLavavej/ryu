@@ -100,19 +100,19 @@ inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const
     digits /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + olength - i - 2, DIGIT_TABLE + c0, 2);
-    memcpy(result + olength - i - 4, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + olength - i - 2, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + olength - i - 4, DIGIT_TABLE + c1, 2);
     i += 4;
   }
   if (digits >= 100) {
     const uint32_t c = (digits % 100) << 1;
     digits /= 100;
-    memcpy(result + olength - i - 2, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + olength - i - 2, DIGIT_TABLE + c, 2);
     i += 2;
   }
   if (digits >= 10) {
     const uint32_t c = digits << 1;
-    memcpy(result + olength - i - 2, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + olength - i - 2, DIGIT_TABLE + c, 2);
   } else {
     result[0] = static_cast<char>('0' + digits);
   }
@@ -129,14 +129,14 @@ inline void append_d_digits(const uint32_t olength, uint32_t digits, char* const
     digits /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + olength + 1 - i - 2, DIGIT_TABLE + c0, 2);
-    memcpy(result + olength + 1 - i - 4, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + olength + 1 - i - 2, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + olength + 1 - i - 4, DIGIT_TABLE + c1, 2);
     i += 4;
   }
   if (digits >= 100) {
     const uint32_t c = (digits % 100) << 1;
     digits /= 100;
-    memcpy(result + olength + 1 - i - 2, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + olength + 1 - i - 2, DIGIT_TABLE + c, 2);
     i += 2;
   }
   if (digits >= 10) {
@@ -155,7 +155,7 @@ inline void append_c_digits(const uint32_t count, uint32_t digits, char* const r
   for (; i < count - 1; i += 2) {
     const uint32_t c = (digits % 100) << 1;
     digits /= 100;
-    memcpy(result + count - i - 2, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + count - i - 2, DIGIT_TABLE + c, 2);
   }
   if (i < count) {
     const char c = static_cast<char>('0' + (digits % 10));
@@ -165,7 +165,7 @@ inline void append_c_digits(const uint32_t count, uint32_t digits, char* const r
 
 inline void append_nine_digits(uint32_t digits, char* const result) {
   if (digits == 0) {
-    memset(result, '0', 9);
+    _CSTD memset(result, '0', 9);
     return;
   }
 
@@ -178,8 +178,8 @@ inline void append_nine_digits(uint32_t digits, char* const result) {
     digits /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + 7 - i, DIGIT_TABLE + c0, 2);
-    memcpy(result + 5 - i, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + 7 - i, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + 5 - i, DIGIT_TABLE + c1, 2);
   }
   result[0] = static_cast<char>('0' + digits);
 }
@@ -206,7 +206,7 @@ _NODISCARD inline int d2fixed_buffered_n(const double d, const uint32_t precisio
     result[index++] = '0';
     if (precision > 0) {
       result[index++] = '.';
-      memset(result + index, '0', precision);
+      _CSTD memset(result + index, '0', precision);
       index += precision;
     }
     return index;
@@ -262,11 +262,11 @@ _NODISCARD inline int d2fixed_buffered_n(const double d, const uint32_t precisio
     uint32_t i = 0;
     if (blocks <= MIN_BLOCK_2[idx]) {
       i = blocks;
-      memset(result + index, '0', precision);
+      _CSTD memset(result + index, '0', precision);
       index += precision;
     } else if (i < MIN_BLOCK_2[idx]) {
       i = MIN_BLOCK_2[idx];
-      memset(result + index, '0', 9 * i);
+      _CSTD memset(result + index, '0', 9 * i);
       index += 9 * i;
     }
     for (; i < blocks; ++i) {
@@ -276,7 +276,7 @@ _NODISCARD inline int d2fixed_buffered_n(const double d, const uint32_t precisio
         // If the remaining digits are all 0, then we might as well use memset.
         // No rounding required in this case.
         const uint32_t fill = precision - 9 * i;
-        memset(result + index, '0', fill);
+        _CSTD memset(result + index, '0', fill);
         index += fill;
         break;
       }
@@ -341,7 +341,7 @@ _NODISCARD inline int d2fixed_buffered_n(const double d, const uint32_t precisio
       }
     }
   } else {
-    memset(result + index, '0', precision);
+    _CSTD memset(result + index, '0', precision);
     index += precision;
   }
   return index;
@@ -356,10 +356,10 @@ _NODISCARD inline int d2exp_buffered_n(const double d, uint32_t precision, char*
     result[index++] = '0';
     if (precision > 0) {
       result[index++] = '.';
-      memset(result + index, '0', precision);
+      _CSTD memset(result + index, '0', precision);
       index += precision;
     }
-    memcpy(result + index, "e+00", 4);
+    _CSTD memcpy(result + index, "e+00", 4);
     index += 4;
     return index;
   }
@@ -484,7 +484,7 @@ _NODISCARD inline int d2exp_buffered_n(const double d, uint32_t precision, char*
   }
   if (printedDigits != 0) {
     if (digits == 0) {
-      memset(result + index, '0', maximum);
+      _CSTD memset(result + index, '0', maximum);
     } else {
       append_c_digits(maximum, digits, result + index);
     }
@@ -532,11 +532,11 @@ _NODISCARD inline int d2exp_buffered_n(const double d, uint32_t precision, char*
 
   if (exp >= 100) {
     const int32_t c = exp % 10;
-    memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
+    _CSTD memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
     result[index + 2] = static_cast<char>('0' + c);
     index += 3;
   } else {
-    memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
+    _CSTD memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
     index += 2;
   }
 

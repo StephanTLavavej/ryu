@@ -342,10 +342,10 @@ _NODISCARD inline int to_chars(const floating_decimal_64 v, char* const result) 
     const uint32_t c1 = (c / 100) << 1;
     const uint32_t d0 = (d % 100) << 1;
     const uint32_t d1 = (d / 100) << 1;
-    memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
-    memcpy(result + olength - i - 5, DIGIT_TABLE + d0, 2);
-    memcpy(result + olength - i - 7, DIGIT_TABLE + d1, 2);
+    _CSTD memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + olength - i - 5, DIGIT_TABLE + d0, 2);
+    _CSTD memcpy(result + olength - i - 7, DIGIT_TABLE + d1, 2);
     i += 8;
   }
   uint32_t output2 = static_cast<uint32_t>(output);
@@ -358,14 +358,14 @@ _NODISCARD inline int to_chars(const floating_decimal_64 v, char* const result) 
     output2 /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
+    _CSTD memcpy(result + olength - i - 1, DIGIT_TABLE + c0, 2);
+    _CSTD memcpy(result + olength - i - 3, DIGIT_TABLE + c1, 2);
     i += 4;
   }
   if (output2 >= 100) {
     const uint32_t c = (output2 % 100) << 1;
     output2 /= 100;
-    memcpy(result + olength - i - 1, DIGIT_TABLE + c, 2);
+    _CSTD memcpy(result + olength - i - 1, DIGIT_TABLE + c, 2);
     i += 2;
   }
   if (output2 >= 10) {
@@ -396,11 +396,11 @@ _NODISCARD inline int to_chars(const floating_decimal_64 v, char* const result) 
 
   if (exp >= 100) {
     const int32_t c = exp % 10;
-    memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
+    _CSTD memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
     result[index + 2] = static_cast<char>('0' + c);
     index += 3;
   } else if (exp >= 10) {
-    memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
+    _CSTD memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
     index += 2;
   } else {
     result[index++] = static_cast<char>('0' + exp);
@@ -447,7 +447,7 @@ _NODISCARD inline int d2s_buffered_n(const double f, char* const result) {
 
   // Case distinction; exit early for the easy cases.
   if (bits == 0) {
-    memcpy(result, "0E0", 3);
+    _CSTD memcpy(result, "0E0", 3);
     return 3;
   }
 
