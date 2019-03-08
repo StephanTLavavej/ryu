@@ -64,8 +64,8 @@ _NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* con
   const uint64_t s1low = low2 + high1 + c1; // 128
   const uint32_t c2 = s1low < low2; // high1 + c1 can't overflow, so compare against low2
   const uint64_t s1high = high2 + c2;       // 192
-  assert(j >= 128);
-  assert(j <= 180);
+  _STL_INTERNAL_CHECK(j >= 128);
+  _STL_INTERNAL_CHECK(j <= 180);
 #ifdef _M_X64
   const uint32_t dist = static_cast<uint32_t>(j - 128); // dist: [0, 52]
   const uint64_t shiftedhigh = s1high >> dist;

@@ -19,7 +19,7 @@ _NODISCARD inline uint32_t decimalLength9(const uint32_t v) {
   // Function precondition: v is not a 10-digit number.
   // (f2s: 9 digits are sufficient for round-tripping.)
   // (d2fixed: We print 9-digit blocks.)
-  assert(v < 1000000000);
+  _STL_INTERNAL_CHECK(v < 1000000000);
   if (v >= 100000000) { return 9; }
   if (v >= 10000000) { return 8; }
   if (v >= 1000000) { return 7; }
@@ -36,24 +36,24 @@ _NODISCARD inline int32_t pow5bits(const int32_t e) {
   // This approximation works up to the point that the multiplication overflows at e = 3529.
   // If the multiplication were done in 64 bits, it would fail at 5^4004 which is just greater
   // than 2^9297.
-  assert(e >= 0);
-  assert(e <= 3528);
+  _STL_INTERNAL_CHECK(e >= 0);
+  _STL_INTERNAL_CHECK(e <= 3528);
   return static_cast<int32_t>(((static_cast<uint32_t>(e) * 1217359) >> 19) + 1);
 }
 
 // Returns floor(log_10(2^e)).
 _NODISCARD inline uint32_t log10Pow2(const int32_t e) {
   // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
-  assert(e >= 0);
-  assert(e <= 1650);
+  _STL_INTERNAL_CHECK(e >= 0);
+  _STL_INTERNAL_CHECK(e <= 1650);
   return (static_cast<uint32_t>(e) * 78913) >> 18;
 }
 
 // Returns floor(log_10(5^e)).
 _NODISCARD inline uint32_t log10Pow5(const int32_t e) {
   // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
-  assert(e >= 0);
-  assert(e <= 2620);
+  _STL_INTERNAL_CHECK(e >= 0);
+  _STL_INTERNAL_CHECK(e <= 2620);
   return (static_cast<uint32_t>(e) * 732923) >> 20;
 }
 

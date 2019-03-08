@@ -29,7 +29,7 @@ _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, c
   // (The shift value is in the range [49, 58].)
   // Check this here in case a future change requires larger shift
   // values. In this case this function needs to be adjusted.
-  assert(dist < 64);
+  _STL_INTERNAL_CHECK(dist < 64);
   return __shiftright128(lo, hi, static_cast<unsigned char>(dist));
 }
 
@@ -68,13 +68,13 @@ _NODISCARD __forceinline uint64_t umul128(const uint64_t a, const uint64_t b, ui
 
 _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, const uint32_t dist) {
   // We don't need to handle the case dist >= 64 here (see above).
-  assert(dist < 64);
+  _STL_INTERNAL_CHECK(dist < 64);
 #ifdef _WIN64
-  assert(dist > 0);
+  _STL_INTERNAL_CHECK(dist > 0);
   return (hi << (64 - dist)) | (lo >> dist);
 #else // ^^^ 64-bit ^^^ / vvv 32-bit vvv
   // Avoid a 64-bit shift by taking advantage of the range of shift values.
-  assert(dist >= 32);
+  _STL_INTERNAL_CHECK(dist >= 32);
   return (hi << (64 - dist)) | (static_cast<uint32_t>(lo >> 32) >> (dist - 32));
 #endif // ^^^ 32-bit ^^^
 }
@@ -169,7 +169,7 @@ _NODISCARD inline uint32_t mod1e9(const uint64_t x) {
 _NODISCARD inline uint32_t pow5Factor(uint64_t value) {
   uint32_t count = 0;
   for (;;) {
-    assert(value != 0);
+    _STL_INTERNAL_CHECK(value != 0);
     const uint64_t q = div5(value);
     const uint32_t r = static_cast<uint32_t>(value) - 5 * static_cast<uint32_t>(q);
     if (r != 0) {
@@ -189,7 +189,7 @@ _NODISCARD inline bool multipleOfPowerOf5(const uint64_t value, const uint32_t p
 
 // Returns true if value is divisible by 2^p.
 _NODISCARD inline bool multipleOfPowerOf2(const uint64_t value, const uint32_t p) {
-  assert(value != 0);
+  _STL_INTERNAL_CHECK(value != 0);
   // return __builtin_ctzll(value) >= p;
   return (value & ((1ull << p) - 1)) == 0;
 }

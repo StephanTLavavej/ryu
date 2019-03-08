@@ -50,7 +50,7 @@ inline constexpr uint64_t FLOAT_POW5_SPLIT[47] = {
 _NODISCARD inline uint32_t pow5Factor(uint32_t value) {
   uint32_t count = 0;
   for (;;) {
-    assert(value != 0);
+    _STL_INTERNAL_CHECK(value != 0);
     const uint32_t q = value / 5;
     const uint32_t r = value % 5;
     if (r != 0) {
@@ -74,7 +74,7 @@ _NODISCARD inline bool multipleOfPowerOf2(const uint32_t value, const uint32_t p
 }
 
 _NODISCARD inline uint32_t mulShift(const uint32_t m, const uint64_t factor, const int32_t shift) {
-  assert(shift > 32);
+  _STL_INTERNAL_CHECK(shift > 32);
 
   // The casts here help MSVC to avoid calls to the __allmul library
   // function.
@@ -96,7 +96,7 @@ _NODISCARD inline uint32_t mulShift(const uint32_t m, const uint64_t factor, con
 #else // ^^^ 32-bit ^^^ / vvv 64-bit vvv
   const uint64_t sum = (bits0 >> 32) + bits1;
   const uint64_t shiftedSum = sum >> (shift - 32);
-  assert(shiftedSum <= UINT32_MAX);
+  _STL_INTERNAL_CHECK(shiftedSum <= UINT32_MAX);
   return static_cast<uint32_t>(shiftedSum);
 #endif // ^^^ 64-bit ^^^
 }
