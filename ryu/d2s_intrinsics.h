@@ -15,7 +15,7 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#if defined(HAS_64_BIT_INTRINSICS)
+#ifdef _M_X64
 
 _NODISCARD inline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
   return _umul128(a, b, productHi);
@@ -33,7 +33,7 @@ _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, c
   return __shiftright128(lo, hi, static_cast<unsigned char>(dist));
 }
 
-#else // defined(HAS_64_BIT_INTRINSICS)
+#else // ^^^ intrinsics available ^^^ / vvv intrinsics unavailable vvv
 
 _NODISCARD __forceinline uint64_t umul128(const uint64_t a, const uint64_t b, uint64_t* const productHi) {
   // TRANSITION, VSO#634761
@@ -79,7 +79,7 @@ _NODISCARD inline uint64_t shiftright128(const uint64_t lo, const uint64_t hi, c
 #endif // ^^^ 32-bit ^^^
 }
 
-#endif // defined(HAS_64_BIT_INTRINSICS)
+#endif // ^^^ intrinsics unavailable ^^^
 
 #ifndef _WIN64
 

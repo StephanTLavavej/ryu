@@ -15,13 +15,9 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#if defined(_M_X64)
-#define HAS_64_BIT_INTRINSICS
-#endif
-
 inline constexpr int POW10_ADDITIONAL_BITS = 120;
 
-#if defined(HAS_64_BIT_INTRINSICS)
+#ifdef _M_X64
 // Returns the low 64 bits of the high 128 bits of the 256-bit product of a and b.
 _NODISCARD inline uint64_t umul256_hi128_lo64(
   const uint64_t aHi, const uint64_t aLo, const uint64_t bHi, const uint64_t bLo) {
@@ -52,7 +48,7 @@ _NODISCARD inline uint32_t uint128_mod1e9(const uint64_t vHi, const uint64_t vLo
 
   return static_cast<uint32_t>(vLo) - 1000000000 * shifted;
 }
-#endif // HAS_64_BIT_INTRINSICS
+#endif // ^^^ intrinsics available ^^^
 
 _NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* const mul, const int32_t j) {
   uint64_t high0;                                   // 64
@@ -70,12 +66,12 @@ _NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* con
   const uint64_t s1high = high2 + c2;       // 192
   assert(j >= 128);
   assert(j <= 180);
-#if defined(HAS_64_BIT_INTRINSICS)
+#ifdef _M_X64
   const uint32_t dist = static_cast<uint32_t>(j - 128); // dist: [0, 52]
   const uint64_t shiftedhigh = s1high >> dist;
   const uint64_t shiftedlow = shiftright128(s1low, s1high, dist);
   return uint128_mod1e9(shiftedhigh, shiftedlow);
-#else // HAS_64_BIT_INTRINSICS
+#else // ^^^ intrinsics available ^^^ / vvv intrinsics unavailable vvv
   if (j < 160) { // j: [128, 160)
     const uint64_t r0 = mod1e9(s1high);
     const uint64_t r1 = mod1e9((r0 << 32) | (s1low >> 32));
@@ -86,7 +82,7 @@ _NODISCARD inline uint32_t mulShift_mod1e9(const uint64_t m, const uint64_t* con
     const uint64_t r1 = ((r0 << 32) | (s1low >> 32));
     return mod1e9(r1 >> (j - 160));
   }
-#endif // HAS_64_BIT_INTRINSICS
+#endif // ^^^ intrinsics unavailable ^^^
 }
 
 inline void append_n_digits(const uint32_t olength, uint32_t digits, char* const result) {

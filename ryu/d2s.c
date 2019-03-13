@@ -15,10 +15,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#if defined(_M_X64)
-#define HAS_64_BIT_INTRINSICS
-#endif
-
 // We need a 64x128-bit multiplication and a subsequent 128-bit shift.
 // Multiplication:
 //   The 64-bit factor is variable and passed in, the 128-bit factor comes
@@ -56,7 +52,7 @@
 //    c. Split only the first factor into 31-bit pieces, which also guarantees
 //       no internal overflow, but requires extra work since the intermediate
 //       results are not perfectly aligned.
-#if defined(HAS_64_BIT_INTRINSICS)
+#ifdef _M_X64
 
 _NODISCARD inline uint64_t mulShift(const uint64_t m, const uint64_t* const mul, const int32_t j) {
   // m is maximum 55 bits
@@ -78,7 +74,7 @@ _NODISCARD inline uint64_t mulShiftAll(const uint64_t m, const uint64_t* const m
   return mulShift(4 * m, mul, j);
 }
 
-#else // HAS_64_BIT_INTRINSICS
+#else // ^^^ intrinsics available ^^^ / vvv intrinsics unavailable vvv
 
 _NODISCARD __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const mul, const int32_t j,
   uint64_t* const vp, uint64_t* const vm, const uint32_t mmShift) { // TRANSITION, VSO#634761
@@ -113,7 +109,7 @@ _NODISCARD __forceinline uint64_t mulShiftAll(uint64_t m, const uint64_t* const 
   return shiftright128(mid, hi, static_cast<uint32_t>(j - 64 - 1));
 }
 
-#endif // HAS_64_BIT_INTRINSICS
+#endif // ^^^ intrinsics unavailable ^^^
 
 _NODISCARD inline uint32_t decimalLength17(const uint64_t v) {
   // This is slightly faster than a loop.
