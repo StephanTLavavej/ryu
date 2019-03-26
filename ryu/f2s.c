@@ -447,7 +447,8 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
               const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
 
               // _Remainder is at most 10^9 - 1 again.
-              _Remainder = _Remainder - 1000000000ull * _Quotient;
+              // For uint32_t truncation, see the __mod1e9() comment in d2s_intrinsics.h.
+              _Remainder = static_cast<uint32_t>(_Remainder) - 1000000000u * _Quotient;
 
               _Data[_Idx] = _Quotient;
             } while (_Idx != 0);
