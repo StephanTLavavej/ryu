@@ -193,19 +193,29 @@ _NODISCARD inline uint32_t __lengthForIndex(const uint32_t __idx) {
   return (__log10Pow2(16 * static_cast<int32_t>(__idx)) + 1 + 16 + 8) / 9;
 }
 
-_NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __precision, char* const __result) {
+_NODISCARD inline to_chars_result __d2fixed_buffered_n(char* _First, char* const _Last, const double __d,
+  const uint32_t __precision) {
+  char* const _Original_first = _First;
+
   const uint64_t __bits = __double_to_bits(__d);
 
   // Case distinction; exit early for the easy cases.
   if (__bits == 0) {
-    int __index = 0;
-    __result[__index++] = '0';
-    if (__precision > 0) {
-      __result[__index++] = '.';
-      _CSTD memset(__result + __index, '0', __precision);
-      __index += __precision;
+    const int32_t _Total_zero_length = 1 // leading zero
+      + static_cast<int32_t>(__precision > 0) // possible decimal point
+      + static_cast<int32_t>(__precision); // zeroes after decimal point
+
+    if (_Last - _First < _Total_zero_length) {
+      return { _Last, errc::value_too_large };
     }
-    return __index;
+
+    *_First++ = '0';
+    if (__precision > 0) {
+      *_First++ = '.';
+      _CSTD memset(_First, '0', __precision);
+      _First += __precision;
+    }
+    return { _First, errc{} };
   }
 
   // Decode __bits into mantissa and exponent.
@@ -222,7 +232,6 @@ _NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __pr
     __m2 = (1ull << __DOUBLE_MANTISSA_BITS) | __ieeeMantissa;
   }
 
-  int __index = 0;
   bool __nonzero = false;
   if (__e2 >= -52) {
     const uint32_t __idx = __e2 < 0 ? 0 : __indexForExponent(static_cast<uint32_t>(__e2));
@@ -234,21 +243,33 @@ _NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __pr
       // a slightly faster code path in __mulShift_mod1e9. Instead, we can just increase the multipliers.
       const uint32_t __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT[__POW10_OFFSET[__idx] + __i], static_cast<int32_t>(__j + 8));
       if (__nonzero) {
-        __append_nine_digits(__digits, __result + __index);
-        __index += 9;
+        if (_Last - _First < 9) {
+          return { _Last, errc::value_too_large };
+        }
+        __append_nine_digits(__digits, _First);
+        _First += 9;
       } else if (__digits != 0) {
         const uint32_t __olength = __decimalLength9(__digits);
-        __append_n_digits(__olength, __digits, __result + __index);
-        __index += __olength;
+        if (_Last - _First < static_cast<ptrdiff_t>(__olength)) {
+          return { _Last, errc::value_too_large };
+        }
+        __append_n_digits(__olength, __digits, _First);
+        _First += __olength;
         __nonzero = true;
       }
     }
   }
   if (!__nonzero) {
-    __result[__index++] = '0';
+    if (_First == _Last) {
+      return { _Last, errc::value_too_large };
+    }
+    *_First++ = '0';
   }
   if (__precision > 0) {
-    __result[__index++] = '.';
+    if (_First == _Last) {
+      return { _Last, errc::value_too_large };
+    }
+    *_First++ = '.';
   }
   if (__e2 < 0) {
     const int32_t __idx = -__e2 / 16;
@@ -258,12 +279,18 @@ _NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __pr
     uint32_t __i = 0;
     if (__blocks <= __MIN_BLOCK_2[__idx]) {
       __i = __blocks;
-      _CSTD memset(__result + __index, '0', __precision);
-      __index += __precision;
+      if (_Last - _First < static_cast<ptrdiff_t>(__precision)) {
+        return { _Last, errc::value_too_large };
+      }
+      _CSTD memset(_First, '0', __precision);
+      _First += __precision;
     } else if (__i < __MIN_BLOCK_2[__idx]) {
       __i = __MIN_BLOCK_2[__idx];
-      _CSTD memset(__result + __index, '0', 9 * __i);
-      __index += 9 * __i;
+      if (_Last - _First < static_cast<ptrdiff_t>(9 * __i)) {
+        return { _Last, errc::value_too_large };
+      }
+      _CSTD memset(_First, '0', 9 * __i);
+      _First += 9 * __i;
     }
     for (; __i < __blocks; ++__i) {
       const int32_t __j = __ADDITIONAL_BITS_2 + (-__e2 - 16 * __idx);
@@ -272,16 +299,22 @@ _NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __pr
         // If the remaining digits are all 0, then we might as well use memset.
         // No rounding required in this case.
         const uint32_t __fill = __precision - 9 * __i;
-        _CSTD memset(__result + __index, '0', __fill);
-        __index += __fill;
+        if (_Last - _First < static_cast<ptrdiff_t>(__fill)) {
+          return { _Last, errc::value_too_large };
+        }
+        _CSTD memset(_First, '0', __fill);
+        _First += __fill;
         break;
       }
       // Temporary: __j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in __mulShift_mod1e9. Instead, we can just increase the multipliers.
       uint32_t __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT_2[__p], __j + 8);
       if (__i < __blocks - 1) {
-        __append_nine_digits(__digits, __result + __index);
-        __index += 9;
+        if (_Last - _First < 9) {
+          return { _Last, errc::value_too_large };
+        }
+        __append_nine_digits(__digits, _First);
+        _First += 9;
       } else {
         const uint32_t __maximum = __precision - 9 * __i;
         uint32_t __lastDigit = 0;
@@ -299,65 +332,83 @@ _NODISCARD inline int __d2fixed_buffered_n(const double __d, const uint32_t __pr
           __roundUp = __trailingZeros ? 2 : 1;
         }
         if (__maximum > 0) {
-          __append_c_digits(__maximum, __digits, __result + __index);
-          __index += __maximum;
+          if (_Last - _First < static_cast<ptrdiff_t>(__maximum)) {
+            return { _Last, errc::value_too_large };
+          }
+          __append_c_digits(__maximum, __digits, _First);
+          _First += __maximum;
         }
         break;
       }
     }
     if (__roundUp != 0) {
-      int __roundIndex = __index;
-      int __dotIndex = 0; // '.' can't be located at index 0
+      char* _Round = _First;
+      char* _Dot = _Last;
       while (true) {
-        --__roundIndex;
-        if (__roundIndex == -1) {
-          __result[0] = '1';
-          if (__dotIndex > 0) {
-            __result[__dotIndex] = '0';
-            __result[__dotIndex + 1] = '.';
+        if (_Round == _Original_first) {
+          _Round[0] = '1';
+          if (_Dot != _Last) {
+            _Dot[0] = '0';
+            _Dot[1] = '.';
           }
-          __result[__index++] = '0';
+          if (_First == _Last) {
+            return { _Last, errc::value_too_large };
+          }
+          *_First++ = '0';
           break;
         }
-        const char __c = __result[__roundIndex];
+        --_Round;
+        const char __c = _Round[0];
         if (__c == '.') {
-          __dotIndex = __roundIndex;
+          _Dot = _Round;
           continue;
         } else if (__c == '9') {
-          __result[__roundIndex] = '0';
+          _Round[0] = '0';
           __roundUp = 1;
           continue;
         } else {
           if (__roundUp == 2 && __c % 2 == 0) {
             break;
           }
-          __result[__roundIndex] = __c + 1;
+          _Round[0] = __c + 1;
           break;
         }
       }
     }
   } else {
-    _CSTD memset(__result + __index, '0', __precision);
-    __index += __precision;
+    if (_Last - _First < static_cast<ptrdiff_t>(__precision)) {
+      return { _Last, errc::value_too_large };
+    }
+    _CSTD memset(_First, '0', __precision);
+    _First += __precision;
   }
-  return __index;
+  return { _First, errc{} };
 }
 
-_NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision, char* const __result) {
+_NODISCARD inline to_chars_result __d2exp_buffered_n(char* _First, char* const _Last, const double __d,
+  uint32_t __precision) {
+  char* const _Original_first = _First;
+
   const uint64_t __bits = __double_to_bits(__d);
 
   // Case distinction; exit early for the easy cases.
   if (__bits == 0) {
-    int __index = 0;
-    __result[__index++] = '0';
-    if (__precision > 0) {
-      __result[__index++] = '.';
-      _CSTD memset(__result + __index, '0', __precision);
-      __index += __precision;
+    const int32_t _Total_zero_length = 1 // leading zero
+      + static_cast<int32_t>(__precision > 0) // possible decimal point
+      + static_cast<int32_t>(__precision) // zeroes after decimal point
+      + 4; // "e+00"
+    if (_Last - _First < _Total_zero_length) {
+      return { _Last, errc::value_too_large };
     }
-    _CSTD memcpy(__result + __index, "e+00", 4);
-    __index += 4;
-    return __index;
+    *_First++ = '0';
+    if (__precision > 0) {
+      *_First++ = '.';
+      _CSTD memset(_First, '0', __precision);
+      _First += __precision;
+    }
+    _CSTD memcpy(_First, "e+00", 4);
+    _First += 4;
+    return { _First, errc{} };
   }
 
   // Decode __bits into mantissa and exponent.
@@ -376,7 +427,6 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
 
   const bool __printDecimalPoint = __precision > 0;
   ++__precision;
-  int __index = 0;
   uint32_t __digits = 0;
   uint32_t __printedDigits = 0;
   uint32_t __availableDigits = 0;
@@ -395,8 +445,11 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
           __availableDigits = 9;
           break;
         }
-        __append_nine_digits(__digits, __result + __index);
-        __index += 9;
+        if (_Last - _First < 9) {
+          return { _Last, errc::value_too_large };
+        }
+        __append_nine_digits(__digits, _First);
+        _First += 9;
         __printedDigits += 9;
       } else if (__digits != 0) {
         __availableDigits = __decimalLength9(__digits);
@@ -405,10 +458,16 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
           break;
         }
         if (__printDecimalPoint) {
-          __append_d_digits(__availableDigits, __digits, __result + __index);
-          __index += __availableDigits + 1; // +1 for decimal point
+          if (_Last - _First < static_cast<ptrdiff_t>(__availableDigits + 1)) {
+            return { _Last, errc::value_too_large };
+          }
+          __append_d_digits(__availableDigits, __digits, _First);
+          _First += __availableDigits + 1; // +1 for decimal point
         } else {
-          __result[__index++] = static_cast<char>('0' + __digits);
+          if (_First == _Last) {
+            return { _Last, errc::value_too_large };
+          }
+          *_First++ = static_cast<char>('0' + __digits);
         }
         __printedDigits = __availableDigits;
         __availableDigits = 0;
@@ -429,8 +488,11 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
           __availableDigits = 9;
           break;
         }
-        __append_nine_digits(__digits, __result + __index);
-        __index += 9;
+        if (_Last - _First < 9) {
+          return { _Last, errc::value_too_large };
+        }
+        __append_nine_digits(__digits, _First);
+        _First += 9;
         __printedDigits += 9;
       } else if (__digits != 0) {
         __availableDigits = __decimalLength9(__digits);
@@ -439,10 +501,16 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
           break;
         }
         if (__printDecimalPoint) {
-          __append_d_digits(__availableDigits, __digits, __result + __index);
-          __index += __availableDigits + 1; // +1 for decimal point
+          if (_Last - _First < static_cast<ptrdiff_t>(__availableDigits + 1)) {
+            return { _Last, errc::value_too_large };
+          }
+          __append_d_digits(__availableDigits, __digits, _First);
+          _First += __availableDigits + 1; // +1 for decimal point
         } else {
-          __result[__index++] = static_cast<char>('0' + __digits);
+          if (_First == _Last) {
+            return { _Last, errc::value_too_large };
+          }
+          *_First++ = static_cast<char>('0' + __digits);
         }
         __printedDigits = __availableDigits;
         __availableDigits = 0;
@@ -479,62 +547,84 @@ _NODISCARD inline int __d2exp_buffered_n(const double __d, uint32_t __precision,
     __roundUp = __trailingZeros ? 2 : 1;
   }
   if (__printedDigits != 0) {
-    if (__digits == 0) {
-      _CSTD memset(__result + __index, '0', __maximum);
-    } else {
-      __append_c_digits(__maximum, __digits, __result + __index);
+    if (_Last - _First < static_cast<ptrdiff_t>(__maximum)) {
+      return { _Last, errc::value_too_large };
     }
-    __index += __maximum;
+    if (__digits == 0) {
+      _CSTD memset(_First, '0', __maximum);
+    } else {
+      __append_c_digits(__maximum, __digits, _First);
+    }
+    _First += __maximum;
   } else {
     if (__printDecimalPoint) {
-      __append_d_digits(__maximum, __digits, __result + __index);
-      __index += __maximum + 1; // +1 for decimal point
+      if (_Last - _First < static_cast<ptrdiff_t>(__maximum + 1)) {
+        return { _Last, errc::value_too_large };
+      }
+      __append_d_digits(__maximum, __digits, _First);
+      _First += __maximum + 1; // +1 for decimal point
     } else {
-      __result[__index++] = static_cast<char>('0' + __digits);
+      if (_First == _Last) {
+        return { _Last, errc::value_too_large };
+      }
+      *_First++ = static_cast<char>('0' + __digits);
     }
   }
   if (__roundUp != 0) {
-    int __roundIndex = __index;
+    char* _Round = _First;
     while (true) {
-      --__roundIndex;
-      if (__roundIndex == -1) {
-        __result[0] = '1';
+      if (_Round == _Original_first) {
+        _Round[0] = '1';
         ++__exp;
         break;
       }
-      const char __c = __result[__roundIndex];
+      --_Round;
+      const char __c = _Round[0];
       if (__c == '.') {
         continue;
       } else if (__c == '9') {
-        __result[__roundIndex] = '0';
+        _Round[0] = '0';
         __roundUp = 1;
         continue;
       } else {
         if (__roundUp == 2 && __c % 2 == 0) {
           break;
         }
-        __result[__roundIndex] = __c + 1;
+        _Round[0] = __c + 1;
         break;
       }
     }
   }
-  __result[__index++] = 'e';
+
+  char _Sign_character;
+
   if (__exp < 0) {
-    __result[__index++] = '-';
+    _Sign_character = '-';
     __exp = -__exp;
   } else {
-    __result[__index++] = '+';
+    _Sign_character = '+';
   }
+
+  const int _Exponent_part_length = __exp >= 100
+    ? 5 // "e+NNN"
+    : 4; // "e+NN"
+
+  if (_Last - _First < _Exponent_part_length) {
+    return { _Last, errc::value_too_large };
+  }
+
+  *_First++ = 'e';
+  *_First++ = _Sign_character;
 
   if (__exp >= 100) {
     const int32_t __c = __exp % 10;
-    _CSTD memcpy(__result + __index, __DIGIT_TABLE + 2 * (__exp / 10), 2);
-    __result[__index + 2] = static_cast<char>('0' + __c);
-    __index += 3;
+    _CSTD memcpy(_First, __DIGIT_TABLE + 2 * (__exp / 10), 2);
+    _First[2] = static_cast<char>('0' + __c);
+    _First += 3;
   } else {
-    _CSTD memcpy(__result + __index, __DIGIT_TABLE + 2 * __exp, 2);
-    __index += 2;
+    _CSTD memcpy(_First, __DIGIT_TABLE + 2 * __exp, 2);
+    _First += 2;
   }
 
-  return __index;
+  return { _First, errc{} };
 }
