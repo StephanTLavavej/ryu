@@ -315,7 +315,7 @@ _NODISCARD inline __floating_decimal_64 __d2d(const uint64_t __ieeeMantissa, con
 }
 
 _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_64 __v,
-  chars_format _Fmt, const uint64_t __ieeeMantissa, const uint32_t __ieeeExponent) {
+  chars_format _Fmt, const double __f) {
   // Step 5: Print the decimal representation.
   uint64_t __output = __v.__mantissa;
   int32_t _Ryu_exponent = __v.__exponent;
@@ -457,115 +457,15 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
       }
 
       if (!_Can_use_ryu) {
-        // Print the integer _M2 * 2^_E2 exactly.
-        const uint64_t _M2 = __ieeeMantissa | (1ull << __DOUBLE_MANTISSA_BITS); // restore implicit bit
-        const uint32_t _E2 = __ieeeExponent - __DOUBLE_BIAS - __DOUBLE_MANTISSA_BITS; // bias and normalization
-
-        // For nonzero integers, static_cast<int>(_E2) >= -52. (The minimum value occurs when _M2 * 2^_E2 is 1.
-        // In that case, _M2 is the implicit 1 bit followed by 52 zeros, so _E2 is -52 to shift away the
-        // zeros.) Negative exponents could be handled by shifting _M2, then setting _E2 to 0. However, this
-        // isn't necessary. The dense range of exactly representable integers has negative or zero exponents
-        // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
-        // every digit is necessary to uniquely identify the value, so Ryu must print them all.
-        // Contrapositive: if Ryu can't be used, the exponent must be positive.
-        _STL_INTERNAL_CHECK(static_cast<int>(_E2) > 0);
-        _STL_INTERNAL_CHECK(_E2 <= 971); // because __ieeeExponent <= 2046
-
-        // Manually represent _M2 * 2^_E2 as a large integer.
-        // _M2 is always 53 bits (due to the implicit bit), while _E2 indicates a shift of at most 971 bits.
-        // 53 + 971 equals 1024 equals 32 * 32, so we need exactly 32 32-bit elements.
-        // We use a little-endian representation, visualized like this:
-
-        // << left shift <<
-        // most significant
-        // _Data[31] _Data[30] ... _Data[1] _Data[0]
-        //                         least significant
-        //                         >> right shift >>
-
-        constexpr uint32_t _Data_size = 32;
-        uint32_t _Data[_Data_size]{}; // zero-initialized; performance note: might be suboptimal
-        uint32_t _Maxidx = ((53 + _E2 + 31) / 32) - 1; // index of most significant nonzero element
-        _STL_INTERNAL_CHECK(_Maxidx >= 1); // For double, the integer is always large.
-        _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
-
-        const uint32_t _Bit_shift = _E2 % 32;
-        const uint64_t _Shifted = _M2 << _Bit_shift;
-        if (_Bit_shift <= 11) { // _M2's 53 bits occupy two elements
-          _Data[_Maxidx - 1] = static_cast<uint32_t>(_Shifted);
-          _Data[_Maxidx] = static_cast<uint32_t>(_Shifted >> 32);
-        } else { // _M2's 53 bits occupy three elements
-          _Data[_Maxidx - 2] = static_cast<uint32_t>(_Shifted);
-          _Data[_Maxidx - 1] = static_cast<uint32_t>(_Shifted >> 32);
-          _Data[_Maxidx] = static_cast<uint32_t>(_M2 >> 32) >> (32 - _Bit_shift);
-        }
-
-        // Print the decimal digits within [_First, _First + _Total_fixed_length), right to left.
-        _Mid = _First + _Total_fixed_length;
-
-        // For double, we always perform long division.
-        for (;;) {
-          // Loop invariant: _Maxidx != 0 (i.e. the integer is actually large)
-
-          const uint32_t _Most_significant_elem = _Data[_Maxidx];
-          const uint32_t _Initial_remainder = _Most_significant_elem % 1000000000;
-          const uint32_t _Initial_quotient = _Most_significant_elem / 1000000000;
-          _Data[_Maxidx] = _Initial_quotient;
-          uint64_t _Remainder = _Initial_remainder;
-
-          // Process less significant elements.
-          uint32_t _Idx = _Maxidx;
-          do {
-            --_Idx; // Initially, _Remainder is at most 10^9 - 1.
-
-            // Now, _Remainder is at most (10^9 - 1) * 2^32 + 2^32 - 1, simplified to 10^9 * 2^32 - 1.
-            _Remainder = (_Remainder << 32) | _Data[_Idx];
-
-            // floor((10^9 * 2^32 - 1) / 10^9) == 2^32 - 1, so uint32_t _Quotient is lossless.
-            const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
-
-            // _Remainder is at most 10^9 - 1 again.
-            _Remainder = _Remainder - 1000000000ull * _Quotient;
-
-            _Data[_Idx] = _Quotient;
-          } while (_Idx != 0);
-
-          // Print a 0-filled 9-digit block.
-          uint32_t _Output = static_cast<uint32_t>(_Remainder);
-          const uint32_t __c = _Output % 10000;
-          _Output /= 10000;
-          const uint32_t __d = _Output % 10000;
-          _Output /= 10000;
-          const uint32_t __c0 = (__c % 100) << 1;
-          const uint32_t __c1 = (__c / 100) << 1;
-          const uint32_t __d0 = (__d % 100) << 1;
-          const uint32_t __d1 = (__d / 100) << 1;
-          _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
-          _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
-          _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d0, 2);
-          _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d1, 2);
-          *--_Mid = static_cast<char>('0' + _Output);
-
-          if (_Initial_quotient == 0) { // Is the large integer shrinking?
-            --_Maxidx; // log2(10^9) is 29.9, so we can't shrink by more than one element.
-            if (_Maxidx == 0) {
-              break; // We've finished long division. Now we need to print _Data[0].
-            }
-          }
-        }
-
-        _STL_INTERNAL_CHECK(_Data[0] != 0);
-        for (uint32_t _Idx = 1; _Idx < _Data_size; ++_Idx) {
-          _STL_INTERNAL_CHECK(_Data[_Idx] == 0);
-        }
-
-        // Fall through to print _Data[0]. The code below can handle
-        // the full range of uint32_t (but not the full range of uint64_t).
-        __output = _Data[0];
-        _Ryu_exponent = 0; // Imitate case "1729" to avoid further processing.
-      } else { // _Can_use_ryu
-        // Print the decimal digits, left-aligned within [_First, _First + _Total_fixed_length).
-        _Mid = _First + __olength;
+        // Print the integer exactly.
+        // Performance note: This will redundantly perform bounds checking.
+        // Performance note: This will redundantly decompose the IEEE representation.
+        return __d2fixed_buffered_n(_First, _Last, __f, 0);
       }
+
+      // _Can_use_ryu
+      // Print the decimal digits, left-aligned within [_First, _First + _Total_fixed_length).
+      _Mid = _First + __olength;
     } else { // cases "1729", "17.29", and "0.001729"
       // Print the decimal digits, right-aligned within [_First, _First + _Total_fixed_length).
       _Mid = _First + _Total_fixed_length;
@@ -622,7 +522,7 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
     if (_Ryu_exponent > 0) { // case "172900" with _Can_use_ryu
       // Performance note: it might be more efficient to do this immediately after setting _Mid.
       _CSTD memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
-    } else if (_Ryu_exponent == 0) { // case "1729", and case "172900" with !_Can_use_ryu
+    } else if (_Ryu_exponent == 0) { // case "1729"
       // Done!
     } else if (_Whole_digits > 0) { // case "17.29"
       // Performance note: moving digits might not be optimal.
@@ -794,6 +694,29 @@ _NODISCARD inline to_chars_result __d2s_buffered_n(char* const _First, char* con
   const uint64_t __ieeeMantissa = __bits & ((1ull << __DOUBLE_MANTISSA_BITS) - 1);
   const uint32_t __ieeeExponent = static_cast<uint32_t>(__bits >> __DOUBLE_MANTISSA_BITS);
 
+  if (_Fmt == chars_format::fixed) {
+    // const uint64_t _Mantissa2 = __ieeeMantissa | (1ull << __DOUBLE_MANTISSA_BITS); // restore implicit bit
+    const int32_t _Exponent2 = static_cast<int32_t>(__ieeeExponent)
+      - __DOUBLE_BIAS - __DOUBLE_MANTISSA_BITS; // bias and normalization
+
+    // Normal values are equal to _Mantissa2 * 2^_Exponent2.
+    // (Subnormals are different, but they'll be rejected by the _Exponent2 test here, so they can be ignored.)
+
+    // For nonzero integers, _Exponent2 >= -52. (The minimum value occurs when _Mantissa2 * 2^_Exponent2 is 1.
+    // In that case, _Mantissa2 is the implicit 1 bit followed by 52 zeros, so _Exponent2 is -52 to shift away
+    // the zeros.) The dense range of exactly representable integers has negative or zero exponents
+    // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
+    // every digit is necessary to uniquely identify the value, so Ryu must print them all.
+
+    // Positive exponents are the non-dense range of exactly representable integers. This contains all of the values
+    // for which Ryu can't be used (and a few Ryu-friendly values). We can save time by detecting positive
+    // exponents here and skipping Ryu. Calling __d2fixed_buffered_n() with precision 0 is valid for all integers
+    // (so it's okay if we call it with a Ryu-friendly value).
+    if (_Exponent2 > 0) {
+      return __d2fixed_buffered_n(_First, _Last, __f, 0);
+    }
+  }
+
   __floating_decimal_64 __v;
   const bool __isSmallInt = __d2d_small_int(__ieeeMantissa, __ieeeExponent, &__v);
   if (__isSmallInt) {
@@ -814,5 +737,5 @@ _NODISCARD inline to_chars_result __d2s_buffered_n(char* const _First, char* con
     __v = __d2d(__ieeeMantissa, __ieeeExponent);
   }
 
-  return __to_chars(_First, _Last, __v, _Fmt, __ieeeMantissa, __ieeeExponent);
+  return __to_chars(_First, _Last, __v, _Fmt, __f);
 }

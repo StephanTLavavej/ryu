@@ -380,22 +380,25 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
       }
 
       if (!_Can_use_ryu) {
-        // Print the integer _M2 * 2^_E2 exactly.
-        const uint32_t _M2 = __ieeeMantissa | (1u << __FLOAT_MANTISSA_BITS); // restore implicit bit
-        const uint32_t _E2 = __ieeeExponent - __FLOAT_BIAS - __FLOAT_MANTISSA_BITS; // bias and normalization
+        // Print the integer _Mantissa2 * 2^_Exponent2 exactly.
+        const uint32_t _Mantissa2 = __ieeeMantissa | (1u << __FLOAT_MANTISSA_BITS); // restore implicit bit
+        const uint32_t _Exponent2 = __ieeeExponent - __FLOAT_BIAS - __FLOAT_MANTISSA_BITS; // bias and normalization
 
-        // For nonzero integers, static_cast<int>(_E2) >= -23. (The minimum value occurs when _M2 * 2^_E2 is 1.
-        // In that case, _M2 is the implicit 1 bit followed by 23 zeros, so _E2 is -23 to shift away the
-        // zeros.) Negative exponents could be handled by shifting _M2, then setting _E2 to 0. However, this
-        // isn't necessary. The dense range of exactly representable integers has negative or zero exponents
-        // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
-        // every digit is necessary to uniquely identify the value, so Ryu must print them all.
+        // Performance note: Long division appears to be faster than losslessly widening float to double and calling
+        // __d2fixed_buffered_n(). If __f2fixed_buffered_n() is implemented, it might be faster than long division.
+
+        // For nonzero integers, static_cast<int>(_Exponent2) >= -23. (The minimum value occurs when
+        // _Mantissa2 * 2^_Exponent2 is 1. In that case, _Mantissa2 is the implicit 1 bit followed by 23 zeros, so
+        // _Exponent2 is -23 to shift away the zeros.) Negative exponents could be handled by shifting _Mantissa2, then
+        // setting _Exponent2 to 0. However, this isn't necessary. The dense range of exactly representable integers
+        // has negative or zero exponents (as positive exponents make the range non-dense). For that dense range, Ryu
+        // will always be used: every digit is necessary to uniquely identify the value, so Ryu must print them all.
         // Contrapositive: if Ryu can't be used, the exponent must be positive.
-        _STL_INTERNAL_CHECK(static_cast<int>(_E2) > 0);
-        _STL_INTERNAL_CHECK(_E2 <= 104); // because __ieeeExponent <= 254
+        _STL_INTERNAL_CHECK(static_cast<int>(_Exponent2) > 0);
+        _STL_INTERNAL_CHECK(_Exponent2 <= 104); // because __ieeeExponent <= 254
 
-        // Manually represent _M2 * 2^_E2 as a large integer.
-        // _M2 is always 24 bits (due to the implicit bit), while _E2 indicates a shift of at most 104 bits.
+        // Manually represent _Mantissa2 * 2^_Exponent2 as a large integer. _Mantissa2 is always 24 bits
+        // (due to the implicit bit), while _Exponent2 indicates a shift of at most 104 bits.
         // 24 + 104 equals 128 equals 4 * 32, so we need exactly 4 32-bit elements.
         // We use a little-endian representation, visualized like this:
 
@@ -407,15 +410,15 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
 
         constexpr uint32_t _Data_size = 4;
         uint32_t _Data[_Data_size]{}; // zero-initialized
-        uint32_t _Maxidx = ((24 + _E2 + 31) / 32) - 1; // index of most significant nonzero element
+        uint32_t _Maxidx = ((24 + _Exponent2 + 31) / 32) - 1; // index of most significant nonzero element
         _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
 
-        const uint32_t _Bit_shift = _E2 % 32;
-        if (_Bit_shift <= 8) { // _M2's 24 bits don't cross an element boundary
-          _Data[_Maxidx] = _M2 << _Bit_shift;
-        } else { // _M2's 24 bits cross an element boundary
-          _Data[_Maxidx - 1] = _M2 << _Bit_shift;
-          _Data[_Maxidx] = _M2 >> (32 - _Bit_shift);
+        const uint32_t _Bit_shift = _Exponent2 % 32;
+        if (_Bit_shift <= 8) { // _Mantissa2's 24 bits don't cross an element boundary
+          _Data[_Maxidx] = _Mantissa2 << _Bit_shift;
+        } else { // _Mantissa2's 24 bits cross an element boundary
+          _Data[_Maxidx - 1] = _Mantissa2 << _Bit_shift;
+          _Data[_Maxidx] = _Mantissa2 >> (32 - _Bit_shift);
         }
 
         // Print the decimal digits within [_First, _First + _Total_fixed_length), right to left.
@@ -627,6 +630,11 @@ _NODISCARD inline to_chars_result __f2s_buffered_n(char* const _First, char* con
   // Decode __bits into mantissa and exponent.
   const uint32_t __ieeeMantissa = __bits & ((1u << __FLOAT_MANTISSA_BITS) - 1);
   const uint32_t __ieeeExponent = __bits >> __FLOAT_MANTISSA_BITS;
+
+  // Performance note: When _Fmt == chars_format::fixed and the floating-point number is a large integer,
+  // it might be faster to skip Ryu and immediately perform long division. However, without Ryu determining the
+  // total output length, we would need to buffer the digits generated from right to left by long division.
+  // The largest possible float is 5 blocks of 9 digits: 340'282346638'528859811'704183484'516925440
 
   const __floating_decimal_32 __v = __f2d(__ieeeMantissa, __ieeeExponent);
   return __to_chars(_First, _Last, __v, _Fmt, __ieeeMantissa, __ieeeExponent);
