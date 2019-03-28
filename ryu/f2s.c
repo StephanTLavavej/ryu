@@ -254,7 +254,127 @@ _NODISCARD inline __floating_decimal_32 __f2d(const uint32_t __ieeeMantissa, con
   return __fd;
 }
 
-_NODISCARD inline uint64_t __div1e9(uint64_t __x); // TRANSITION, LLVM#37932
+_NODISCARD inline to_chars_result _Large_integer_to_chars(char* const _First, char* const _Last,
+  const uint32_t _Mantissa2, const int32_t _Exponent2) {
+
+  // Print the integer _Mantissa2 * 2^_Exponent2 exactly.
+
+  // For nonzero integers, _Exponent2 >= -23. (The minimum value occurs when _Mantissa2 * 2^_Exponent2 is 1.
+  // In that case, _Mantissa2 is the implicit 1 bit followed by 23 zeros, so _Exponent2 is -23 to shift away
+  // the zeros.) The dense range of exactly representable integers has negative or zero exponents
+  // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
+  // every digit is necessary to uniquely identify the value, so Ryu must print them all.
+
+  // Positive exponents are the non-dense range of exactly representable integers.
+  // This contains all of the values for which Ryu can't be used (and a few Ryu-friendly values).
+
+  // Performance note: Long division appears to be faster than losslessly widening float to double and calling
+  // __d2fixed_buffered_n(). If __f2fixed_buffered_n() is implemented, it might be faster than long division.
+
+  _STL_INTERNAL_CHECK(_Exponent2 > 0);
+  _STL_INTERNAL_CHECK(_Exponent2 <= 104); // because __ieeeExponent <= 254
+
+  // Manually represent _Mantissa2 * 2^_Exponent2 as a large integer. _Mantissa2 is always 24 bits
+  // (due to the implicit bit), while _Exponent2 indicates a shift of at most 104 bits.
+  // 24 + 104 equals 128 equals 4 * 32, so we need exactly 4 32-bit elements.
+  // We use a little-endian representation, visualized like this:
+
+  // << left shift <<
+  // most significant
+  // _Data[3] _Data[2] _Data[1] _Data[0]
+  //                   least significant
+  //                   >> right shift >>
+
+  constexpr uint32_t _Data_size = 4;
+  uint32_t _Data[_Data_size]{}; // zero-initialized
+  uint32_t _Maxidx = ((24 + static_cast<uint32_t>(_Exponent2) + 31) / 32) - 1; // index of most significant nonzero element
+  _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
+
+  const uint32_t _Bit_shift = static_cast<uint32_t>(_Exponent2) % 32;
+  if (_Bit_shift <= 8) { // _Mantissa2's 24 bits don't cross an element boundary
+    _Data[_Maxidx] = _Mantissa2 << _Bit_shift;
+  } else { // _Mantissa2's 24 bits cross an element boundary
+    _Data[_Maxidx - 1] = _Mantissa2 << _Bit_shift;
+    _Data[_Maxidx] = _Mantissa2 >> (32 - _Bit_shift);
+  }
+
+  // If Ryu hasn't determined the total output length, we need to buffer the digits generated from right to left
+  // by long division. The largest possible float is: 340'282346638'528859811'704183484'516925440
+  uint32_t _Blocks[4];
+  int32_t _Filled_blocks = 0;
+  // From left to right, we're going to print:
+  // _Data[0] will be [1, 10] digits.
+  // Then if _Filled_blocks > 0:
+  // _Blocks[_Filled_blocks - 1], ..., _Blocks[0] will be 0-filled 9-digit blocks.
+
+  if (_Maxidx != 0) { // If the integer is actually large, perform long division.
+                      // Otherwise, skip to printing _Data[0].
+    for (;;) {
+      // Loop invariant: _Maxidx != 0 (i.e. the integer is actually large)
+
+      const uint32_t _Most_significant_elem = _Data[_Maxidx];
+      const uint32_t _Initial_remainder = _Most_significant_elem % 1000000000;
+      const uint32_t _Initial_quotient = _Most_significant_elem / 1000000000;
+      _Data[_Maxidx] = _Initial_quotient;
+      uint64_t _Remainder = _Initial_remainder;
+
+      // Process less significant elements.
+      uint32_t _Idx = _Maxidx;
+      do {
+        --_Idx; // Initially, _Remainder is at most 10^9 - 1.
+
+        // Now, _Remainder is at most (10^9 - 1) * 2^32 + 2^32 - 1, simplified to 10^9 * 2^32 - 1.
+        _Remainder = (_Remainder << 32) | _Data[_Idx];
+
+        // floor((10^9 * 2^32 - 1) / 10^9) == 2^32 - 1, so uint32_t _Quotient is lossless.
+        const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
+
+        // _Remainder is at most 10^9 - 1 again.
+        // For uint32_t truncation, see the __mod1e9() comment in d2s_intrinsics.h.
+        _Remainder = static_cast<uint32_t>(_Remainder) - 1000000000u * _Quotient;
+
+        _Data[_Idx] = _Quotient;
+      } while (_Idx != 0);
+
+      // Store a 0-filled 9-digit block.
+      _Blocks[_Filled_blocks++] = static_cast<uint32_t>(_Remainder);
+
+      if (_Initial_quotient == 0) { // Is the large integer shrinking?
+        --_Maxidx; // log2(10^9) is 29.9, so we can't shrink by more than one element.
+        if (_Maxidx == 0) {
+          break; // We've finished long division. Now we need to print _Data[0].
+        }
+      }
+    }
+  }
+
+  _STL_INTERNAL_CHECK(_Data[0] != 0);
+  for (uint32_t _Idx = 1; _Idx < _Data_size; ++_Idx) {
+    _STL_INTERNAL_CHECK(_Data[_Idx] == 0);
+  }
+
+  const uint32_t _Data_olength = _Data[0] >= 1000000000 ? 10 : __decimalLength9(_Data[0]);
+  const uint32_t _Total_fixed_length = _Data_olength + 9 * _Filled_blocks;
+
+  if (_Last - _First < static_cast<ptrdiff_t>(_Total_fixed_length)) {
+    return { _Last, errc::value_too_large };
+  }
+
+  char* _Result = _First;
+
+  // Print _Data[0]. While it's up to 10 digits,
+  // which is more than Ryu generates, the code below can handle this.
+  __append_n_digits(_Data_olength, _Data[0], _Result);
+  _Result += _Data_olength;
+
+  // Print 0-filled 9-digit blocks.
+  for (int32_t _Idx = _Filled_blocks - 1; _Idx >= 0; --_Idx) {
+    __append_nine_digits(_Blocks[_Idx], _Result);
+    _Result += 9;
+  }
+
+  return { _Result, errc{} };
+}
 
 _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_32 __v,
   chars_format _Fmt, const uint32_t __ieeeMantissa, const uint32_t __ieeeExponent) {
@@ -380,117 +500,17 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
       }
 
       if (!_Can_use_ryu) {
-        // Print the integer _Mantissa2 * 2^_Exponent2 exactly.
         const uint32_t _Mantissa2 = __ieeeMantissa | (1u << __FLOAT_MANTISSA_BITS); // restore implicit bit
-        const uint32_t _Exponent2 = __ieeeExponent - __FLOAT_BIAS - __FLOAT_MANTISSA_BITS; // bias and normalization
+        const int32_t _Exponent2 = static_cast<int32_t>(__ieeeExponent)
+          - __FLOAT_BIAS - __FLOAT_MANTISSA_BITS; // bias and normalization
 
-        // Performance note: Long division appears to be faster than losslessly widening float to double and calling
-        // __d2fixed_buffered_n(). If __f2fixed_buffered_n() is implemented, it might be faster than long division.
-
-        // For nonzero integers, static_cast<int>(_Exponent2) >= -23. (The minimum value occurs when
-        // _Mantissa2 * 2^_Exponent2 is 1. In that case, _Mantissa2 is the implicit 1 bit followed by 23 zeros, so
-        // _Exponent2 is -23 to shift away the zeros.) Negative exponents could be handled by shifting _Mantissa2, then
-        // setting _Exponent2 to 0. However, this isn't necessary. The dense range of exactly representable integers
-        // has negative or zero exponents (as positive exponents make the range non-dense). For that dense range, Ryu
-        // will always be used: every digit is necessary to uniquely identify the value, so Ryu must print them all.
-        // Contrapositive: if Ryu can't be used, the exponent must be positive.
-        _STL_INTERNAL_CHECK(static_cast<int>(_Exponent2) > 0);
-        _STL_INTERNAL_CHECK(_Exponent2 <= 104); // because __ieeeExponent <= 254
-
-        // Manually represent _Mantissa2 * 2^_Exponent2 as a large integer. _Mantissa2 is always 24 bits
-        // (due to the implicit bit), while _Exponent2 indicates a shift of at most 104 bits.
-        // 24 + 104 equals 128 equals 4 * 32, so we need exactly 4 32-bit elements.
-        // We use a little-endian representation, visualized like this:
-
-        // << left shift <<
-        // most significant
-        // _Data[3] _Data[2] _Data[1] _Data[0]
-        //                   least significant
-        //                   >> right shift >>
-
-        constexpr uint32_t _Data_size = 4;
-        uint32_t _Data[_Data_size]{}; // zero-initialized
-        uint32_t _Maxidx = ((24 + _Exponent2 + 31) / 32) - 1; // index of most significant nonzero element
-        _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
-
-        const uint32_t _Bit_shift = _Exponent2 % 32;
-        if (_Bit_shift <= 8) { // _Mantissa2's 24 bits don't cross an element boundary
-          _Data[_Maxidx] = _Mantissa2 << _Bit_shift;
-        } else { // _Mantissa2's 24 bits cross an element boundary
-          _Data[_Maxidx - 1] = _Mantissa2 << _Bit_shift;
-          _Data[_Maxidx] = _Mantissa2 >> (32 - _Bit_shift);
-        }
-
-        // Print the decimal digits within [_First, _First + _Total_fixed_length), right to left.
-        _Mid = _First + _Total_fixed_length;
-
-        if (_Maxidx != 0) { // If the integer is actually large, perform long division.
-                            // Otherwise, skip to printing _Data[0].
-          for (;;) {
-            // Loop invariant: _Maxidx != 0 (i.e. the integer is actually large)
-
-            const uint32_t _Most_significant_elem = _Data[_Maxidx];
-            const uint32_t _Initial_remainder = _Most_significant_elem % 1000000000;
-            const uint32_t _Initial_quotient = _Most_significant_elem / 1000000000;
-            _Data[_Maxidx] = _Initial_quotient;
-            uint64_t _Remainder = _Initial_remainder;
-
-            // Process less significant elements.
-            uint32_t _Idx = _Maxidx;
-            do {
-              --_Idx; // Initially, _Remainder is at most 10^9 - 1.
-
-              // Now, _Remainder is at most (10^9 - 1) * 2^32 + 2^32 - 1, simplified to 10^9 * 2^32 - 1.
-              _Remainder = (_Remainder << 32) | _Data[_Idx];
-
-              // floor((10^9 * 2^32 - 1) / 10^9) == 2^32 - 1, so uint32_t _Quotient is lossless.
-              const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
-
-              // _Remainder is at most 10^9 - 1 again.
-              // For uint32_t truncation, see the __mod1e9() comment in d2s_intrinsics.h.
-              _Remainder = static_cast<uint32_t>(_Remainder) - 1000000000u * _Quotient;
-
-              _Data[_Idx] = _Quotient;
-            } while (_Idx != 0);
-
-            // Print a 0-filled 9-digit block.
-            uint32_t _Output = static_cast<uint32_t>(_Remainder);
-            const uint32_t __c = _Output % 10000;
-            _Output /= 10000;
-            const uint32_t __d = _Output % 10000;
-            _Output /= 10000;
-            const uint32_t __c0 = (__c % 100) << 1;
-            const uint32_t __c1 = (__c / 100) << 1;
-            const uint32_t __d0 = (__d % 100) << 1;
-            const uint32_t __d1 = (__d / 100) << 1;
-            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
-            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
-            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d0, 2);
-            _CSTD memcpy(_Mid -= 2, __DIGIT_TABLE + __d1, 2);
-            *--_Mid = static_cast<char>('0' + _Output);
-
-            if (_Initial_quotient == 0) { // Is the large integer shrinking?
-              --_Maxidx; // log2(10^9) is 29.9, so we can't shrink by more than one element.
-              if (_Maxidx == 0) {
-                break; // We've finished long division. Now we need to print _Data[0].
-              }
-            }
-          }
-        }
-
-        _STL_INTERNAL_CHECK(_Data[0] != 0);
-        for (uint32_t _Idx = 1; _Idx < _Data_size; ++_Idx) {
-          _STL_INTERNAL_CHECK(_Data[_Idx] == 0);
-        }
-
-        // Fall through to print _Data[0]. While it's up to 10 digits,
-        // which is more than Ryu generates, the code below can handle this.
-        __output = _Data[0];
-        _Ryu_exponent = 0; // Imitate case "1729" to avoid further processing.
-      } else { // _Can_use_ryu
-        // Print the decimal digits, left-aligned within [_First, _First + _Total_fixed_length).
-        _Mid = _First + __olength;
+        // Performance note: We've already called Ryu, so this will redundantly perform buffering and bounds checking.
+        return _Large_integer_to_chars(_First, _Last, _Mantissa2, _Exponent2);
       }
+
+      // _Can_use_ryu
+      // Print the decimal digits, left-aligned within [_First, _First + _Total_fixed_length).
+      _Mid = _First + __olength;
     } else { // cases "1729", "17.29", and "0.001729"
       // Print the decimal digits, right-aligned within [_First, _First + _Total_fixed_length).
       _Mid = _First + _Total_fixed_length;
@@ -523,7 +543,7 @@ _NODISCARD inline to_chars_result __to_chars(char* const _First, char* const _La
     if (_Ryu_exponent > 0) { // case "172900" with _Can_use_ryu
       // Performance note: it might be more efficient to do this immediately after setting _Mid.
       _CSTD memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
-    } else if (_Ryu_exponent == 0) { // case "1729", and case "172900" with !_Can_use_ryu
+    } else if (_Ryu_exponent == 0) { // case "1729"
       // Done!
     } else if (_Whole_digits > 0) { // case "17.29"
       // Performance note: moving digits might not be optimal.
@@ -633,7 +653,7 @@ _NODISCARD inline to_chars_result __f2s_buffered_n(char* const _First, char* con
   const uint32_t __ieeeExponent = __bits >> __FLOAT_MANTISSA_BITS;
 
   // When _Fmt == chars_format::fixed and the floating-point number is a large integer,
-  // it's faster to skip Ryu and immediately perform long division.
+  // it's faster to skip Ryu and immediately print the integer exactly.
   if (_Fmt == chars_format::fixed) {
     const uint32_t _Mantissa2 = __ieeeMantissa | (1u << __FLOAT_MANTISSA_BITS); // restore implicit bit
     const int32_t _Exponent2 = static_cast<int32_t>(__ieeeExponent)
@@ -642,117 +662,8 @@ _NODISCARD inline to_chars_result __f2s_buffered_n(char* const _First, char* con
     // Normal values are equal to _Mantissa2 * 2^_Exponent2.
     // (Subnormals are different, but they'll be rejected by the _Exponent2 test here, so they can be ignored.)
 
-    // For nonzero integers, _Exponent2 >= -23. (The minimum value occurs when _Mantissa2 * 2^_Exponent2 is 1.
-    // In that case, _Mantissa2 is the implicit 1 bit followed by 23 zeros, so _Exponent2 is -23 to shift away
-    // the zeros.) The dense range of exactly representable integers has negative or zero exponents
-    // (as positive exponents make the range non-dense). For that dense range, Ryu will always be used:
-    // every digit is necessary to uniquely identify the value, so Ryu must print them all.
-
-    // Positive exponents are the non-dense range of exactly representable integers. This contains all of the values
-    // for which Ryu can't be used (and a few Ryu-friendly values). We can save time by detecting positive
-    // exponents here and skipping Ryu.
     if (_Exponent2 > 0) {
-      _STL_INTERNAL_CHECK(_Exponent2 <= 104); // because __ieeeExponent <= 254
-
-      // Manually represent _Mantissa2 * 2^_Exponent2 as a large integer. _Mantissa2 is always 24 bits
-      // (due to the implicit bit), while _Exponent2 indicates a shift of at most 104 bits.
-      // 24 + 104 equals 128 equals 4 * 32, so we need exactly 4 32-bit elements.
-      // We use a little-endian representation, visualized like this:
-
-      // << left shift <<
-      // most significant
-      // _Data[3] _Data[2] _Data[1] _Data[0]
-      //                   least significant
-      //                   >> right shift >>
-
-      constexpr uint32_t _Data_size = 4;
-      uint32_t _Data[_Data_size]{}; // zero-initialized
-      uint32_t _Maxidx = ((24 + _Exponent2 + 31) / 32) - 1; // index of most significant nonzero element
-      _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
-
-      const uint32_t _Bit_shift = _Exponent2 % 32;
-      if (_Bit_shift <= 8) { // _Mantissa2's 24 bits don't cross an element boundary
-        _Data[_Maxidx] = _Mantissa2 << _Bit_shift;
-      } else { // _Mantissa2's 24 bits cross an element boundary
-        _Data[_Maxidx - 1] = _Mantissa2 << _Bit_shift;
-        _Data[_Maxidx] = _Mantissa2 >> (32 - _Bit_shift);
-      }
-
-      // Without Ryu determining the total output length, we need to buffer the digits generated from right to left
-      // by long division. The largest possible float is: 340'282346638'528859811'704183484'516925440
-      uint32_t _Blocks[4];
-      int32_t _Filled_blocks = 0;
-      // From left to right, we're going to print:
-      // _Data[0] will be [1, 10] digits.
-      // Then if _Filled_blocks > 0:
-      // _Blocks[_Filled_blocks - 1], ..., _Blocks[0] will be 0-filled 9-digit blocks.
-
-      if (_Maxidx != 0) { // If the integer is actually large, perform long division.
-                          // Otherwise, skip to printing _Data[0].
-        for (;;) {
-          // Loop invariant: _Maxidx != 0 (i.e. the integer is actually large)
-
-          const uint32_t _Most_significant_elem = _Data[_Maxidx];
-          const uint32_t _Initial_remainder = _Most_significant_elem % 1000000000;
-          const uint32_t _Initial_quotient = _Most_significant_elem / 1000000000;
-          _Data[_Maxidx] = _Initial_quotient;
-          uint64_t _Remainder = _Initial_remainder;
-
-          // Process less significant elements.
-          uint32_t _Idx = _Maxidx;
-          do {
-            --_Idx; // Initially, _Remainder is at most 10^9 - 1.
-
-            // Now, _Remainder is at most (10^9 - 1) * 2^32 + 2^32 - 1, simplified to 10^9 * 2^32 - 1.
-            _Remainder = (_Remainder << 32) | _Data[_Idx];
-
-            // floor((10^9 * 2^32 - 1) / 10^9) == 2^32 - 1, so uint32_t _Quotient is lossless.
-            const uint32_t _Quotient = static_cast<uint32_t>(__div1e9(_Remainder));
-
-            // _Remainder is at most 10^9 - 1 again.
-            // For uint32_t truncation, see the __mod1e9() comment in d2s_intrinsics.h.
-            _Remainder = static_cast<uint32_t>(_Remainder) - 1000000000u * _Quotient;
-
-            _Data[_Idx] = _Quotient;
-          } while (_Idx != 0);
-
-          // Print a 0-filled 9-digit block.
-          _Blocks[_Filled_blocks++] = static_cast<uint32_t>(_Remainder);
-
-          if (_Initial_quotient == 0) { // Is the large integer shrinking?
-            --_Maxidx; // log2(10^9) is 29.9, so we can't shrink by more than one element.
-            if (_Maxidx == 0) {
-              break; // We've finished long division. Now we need to print _Data[0].
-            }
-          }
-        }
-      }
-
-      _STL_INTERNAL_CHECK(_Data[0] != 0);
-      for (uint32_t _Idx = 1; _Idx < _Data_size; ++_Idx) {
-        _STL_INTERNAL_CHECK(_Data[_Idx] == 0);
-      }
-
-      const uint32_t _Data_olength = _Data[0] >= 1000000000 ? 10 : __decimalLength9(_Data[0]);
-      const uint32_t _Total_fixed_length = _Data_olength + 9 * _Filled_blocks;
-
-      if (_Last - _First < static_cast<ptrdiff_t>(_Total_fixed_length)) {
-        return { _Last, errc::value_too_large };
-      }
-
-      char* _Result = _First;
-
-      // Print _Data[0]. While it's up to 10 digits,
-      // which is more than Ryu generates, the code below can handle this.
-      __append_n_digits(_Data_olength, _Data[0], _Result);
-      _Result += _Data_olength;
-
-      for (int32_t _Idx = _Filled_blocks - 1; _Idx >= 0; --_Idx) {
-        __append_nine_digits(_Blocks[_Idx], _Result);
-        _Result += 9;
-      }
-
-      return { _Result, errc{} };
+      return _Large_integer_to_chars(_First, _Last, _Mantissa2, _Exponent2);
     }
   }
 
