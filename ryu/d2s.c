@@ -64,7 +64,7 @@ _NODISCARD inline uint64_t __mulShift(const uint64_t __m, const uint64_t* const 
   if (__sum < __high0) {
     ++__high1; // overflow into __high1
   }
-  return __ryu_shiftright128(__sum, __high1, __j - 64);
+  return __ryu_shiftright128(__sum, __high1, static_cast<uint32_t>(__j - 64));
 }
 
 _NODISCARD inline uint64_t __mulShiftAll(const uint64_t __m, const uint64_t* const __mul, const int32_t __j,
