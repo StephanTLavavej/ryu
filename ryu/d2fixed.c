@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <intrin.h>
 
 #ifdef RYU_DEBUG
 #include <inttypes.h>
@@ -288,24 +289,27 @@ static inline void append_nine_digits(uint32_t digits, char* const result) {
 #ifdef RYU_DEBUG
   printf("DIGITS=%u\n", digits);
 #endif
-  if (digits == 0) {
-    memset(result, '0', 9);
-    return;
-  }
 
-  for (uint32_t i = 0; i < 5; i += 4) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
-    const uint32_t c = digits - 10000 * (digits / 10000);
-#else
-    const uint32_t c = digits % 10000;
-#endif
-    digits /= 10000;
-    const uint32_t c0 = (c % 100) << 1;
-    const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + 7 - i, DIGIT_TABLE + c0, 2);
-    memcpy(result + 5 - i, DIGIT_TABLE + c1, 2);
-  }
-  result[0] = (char) ('0' + digits);
+  const __m256i zdzdzdzd = _mm256_set1_epi64x(digits);
+  const __m256i zMzMzMzM = _mm256_set_epi64x(1441151881ull, 1125899907ull, 3518437209ull, 1374389535ull); // reversed order
+  const __m256i multiplied = _mm256_mul_epu32(zdzdzdzd, zMzMzMzM);
+  const __m256i zSzSzSzS = _mm256_set_epi64x(57, 50, 45, 37); // reversed order
+  const __m256i multiplied_shifted = _mm256_srlv_epi64(multiplied, zSzSzSzS);
+  const __m256i zHzHzHzH = _mm256_set1_epi64x(100);
+  const __m256i multiplied_shifted_100 = _mm256_mul_epu32(multiplied_shifted, zHzHzHzH);
+  const __m256i SHUFFLED = _mm256_permute4x64_epi64(multiplied_shifted, 0b10'01'00'11);
+  const __m256i DESIRED = _mm256_blend_epi32(zdzdzdzd, SHUFFLED, 0b11'11'11'00);
+  const __m256i FINAL = _mm256_sub_epi64(DESIRED, multiplied_shifted_100);
+  const __m256i FINAL2 = _mm256_slli_epi64(FINAL, 1);
+
+  uint64_t output[4];
+  _mm256_storeu_si256((__m256i*) output, FINAL2);
+
+  result[0] = (char) ('0' + _mm256_extract_epi32(multiplied_shifted, 6));
+  memcpy(result + 1, DIGIT_TABLE + output[3], 2);
+  memcpy(result + 3, DIGIT_TABLE + output[2], 2);
+  memcpy(result + 5, DIGIT_TABLE + output[1], 2);
+  memcpy(result + 7, DIGIT_TABLE + output[0], 2);
 }
 
 static inline uint32_t indexForExponent(const uint32_t e) {
