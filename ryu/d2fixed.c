@@ -290,26 +290,26 @@ static inline void append_nine_digits(uint32_t digits, char* const result) {
   printf("DIGITS=%u\n", digits);
 #endif
 
-  const __m256i zdzdzdzd = _mm256_set1_epi64x(digits);
-  const __m256i zMzMzMzM = _mm256_set_epi64x(1441151881ull, 1125899907ull, 3518437209ull, 1374389535ull); // reversed order
-  const __m256i multiplied = _mm256_mul_epu32(zdzdzdzd, zMzMzMzM);
-  const __m256i zSzSzSzS = _mm256_set_epi64x(57, 50, 45, 37); // reversed order
-  const __m256i multiplied_shifted = _mm256_srlv_epi64(multiplied, zSzSzSzS);
-  const __m256i zHzHzHzH = _mm256_set1_epi64x(100);
-  const __m256i multiplied_shifted_100 = _mm256_mul_epu32(multiplied_shifted, zHzHzHzH);
-  const __m256i SHUFFLED = _mm256_permute4x64_epi64(multiplied_shifted, 0b10'01'00'11);
-  const __m256i DESIRED = _mm256_blend_epi32(zdzdzdzd, SHUFFLED, 0b11'11'11'00);
-  const __m256i FINAL = _mm256_sub_epi64(DESIRED, multiplied_shifted_100);
-  const __m256i FINAL2 = _mm256_slli_epi64(FINAL, 1);
+  // Vector elements: vec[3], vec[2], vec[1], vec[0]
+  const __m256i vec_123456789_repeated = _mm256_cvtepu32_epi64(_mm_set1_epi32((int) digits));
+  const __m256i vec_magic_multipliers = _mm256_set_epi64x(1441151881u, 1125899907u, 3518437209u, 1374389535u);
+  const __m256i vec_multiplied = _mm256_mul_epu32(vec_123456789_repeated, vec_magic_multipliers);
+  const __m256i vec_magic_shifts = _mm256_set_epi64x(57, 50, 45, 37);
+  const __m256i vec_1_123_12345_1234567 = _mm256_srlv_epi64(vec_multiplied, vec_magic_shifts);
+  const __m256i vec_hundred = _mm256_cvtepu32_epi64(_mm_set1_epi32(100));
+  const __m256i vec_100_12300_1234500_123456700 = _mm256_mul_epu32(vec_1_123_12345_1234567, vec_hundred);
+  const __m256i vec_123_12345_1234567_1 = _mm256_permute4x64_epi64(vec_1_123_12345_1234567, 0x93); // 0b10'01'00'11
+  const __m256i vec_123_12345_1234567_123456789 = _mm256_blend_epi32(vec_123_12345_1234567_1, vec_123456789_repeated, 0x03); // 0b00'00'00'11
+  const __m256i vec_23_45_67_89 = _mm256_sub_epi64(vec_123_12345_1234567_123456789, vec_100_12300_1234500_123456700);
+  const __m256i vec_idx23_idx45_idx67_idx89 = _mm256_slli_epi64(vec_23_45_67_89, 1);
 
-  uint64_t output[4];
-  _mm256_storeu_si256((__m256i*) output, FINAL2);
-
-  result[0] = (char) ('0' + _mm256_extract_epi32(multiplied_shifted, 6));
-  memcpy(result + 1, DIGIT_TABLE + output[3], 2);
-  memcpy(result + 3, DIGIT_TABLE + output[2], 2);
-  memcpy(result + 5, DIGIT_TABLE + output[1], 2);
-  memcpy(result + 7, DIGIT_TABLE + output[0], 2);
+  uint64_t idx[4];
+  _mm256_storeu_si256((__m256i*) idx, vec_idx23_idx45_idx67_idx89);
+  result[0] = (char) ('0' + _mm256_extract_epi32(vec_1_123_12345_1234567, 6));
+  memcpy(result + 1, DIGIT_TABLE + idx[3], 2);
+  memcpy(result + 3, DIGIT_TABLE + idx[2], 2);
+  memcpy(result + 5, DIGIT_TABLE + idx[1], 2);
+  memcpy(result + 7, DIGIT_TABLE + idx[0], 2);
 }
 
 static inline uint32_t indexForExponent(const uint32_t e) {
