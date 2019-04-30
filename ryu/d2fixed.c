@@ -362,16 +362,13 @@ _NODISCARD inline to_chars_result __d2fixed_buffered_n(char* _First, char* const
         const char __c = _Round[0];
         if (__c == '.') {
           _Dot = _Round;
-          continue;
         } else if (__c == '9') {
           _Round[0] = '0';
           __roundUp = 1;
-          continue;
         } else {
-          if (__roundUp == 2 && __c % 2 == 0) {
-            break;
+          if (__roundUp == 1 || __c % 2 != 0) {
+            _Round[0] = __c + 1;
           }
-          _Round[0] = __c + 1;
           break;
         }
       }
@@ -583,16 +580,14 @@ _NODISCARD inline to_chars_result __d2exp_buffered_n(char* _First, char* const _
       --_Round;
       const char __c = _Round[0];
       if (__c == '.') {
-        continue;
+        // Keep going.
       } else if (__c == '9') {
         _Round[0] = '0';
         __roundUp = 1;
-        continue;
       } else {
-        if (__roundUp == 2 && __c % 2 == 0) {
-          break;
+        if (__roundUp == 1 || __c % 2 != 0) {
+          _Round[0] = __c + 1;
         }
-        _Round[0] = __c + 1;
         break;
       }
     }
