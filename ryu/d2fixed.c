@@ -202,7 +202,7 @@ _NODISCARD inline to_chars_result __d2fixed_buffered_n(char* _First, char* const
   // Case distinction; exit early for the easy cases.
   if (__bits == 0) {
     const int32_t _Total_zero_length = 1 // leading zero
-      + static_cast<int32_t>(__precision > 0) // possible decimal point
+      + static_cast<int32_t>(__precision != 0) // possible decimal point
       + static_cast<int32_t>(__precision); // zeroes after decimal point
 
     if (_Last - _First < _Total_zero_length) {
@@ -395,7 +395,7 @@ _NODISCARD inline to_chars_result __d2exp_buffered_n(char* _First, char* const _
   // Case distinction; exit early for the easy cases.
   if (__bits == 0) {
     const int32_t _Total_zero_length = 1 // leading zero
-      + static_cast<int32_t>(__precision > 0) // possible decimal point
+      + static_cast<int32_t>(__precision != 0) // possible decimal point
       + static_cast<int32_t>(__precision) // zeroes after decimal point
       + 4; // "e+00"
     if (_Last - _First < _Total_zero_length) {
