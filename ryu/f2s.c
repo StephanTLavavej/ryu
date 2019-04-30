@@ -289,7 +289,9 @@ _NODISCARD inline to_chars_result _Large_integer_to_chars(char* const _First, ch
 
   constexpr uint32_t _Data_size = 4;
   uint32_t _Data[_Data_size]{};
-  uint32_t _Maxidx = ((24 + static_cast<uint32_t>(_Exponent2) + 31) / 32) - 1; // index of most significant nonzero element
+
+  // _Maxidx is the index of the most significant nonzero element.
+  uint32_t _Maxidx = ((24 + static_cast<uint32_t>(_Exponent2) + 31) / 32) - 1;
   _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
 
   const uint32_t _Bit_shift = static_cast<uint32_t>(_Exponent2) % 32;

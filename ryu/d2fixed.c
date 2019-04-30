@@ -241,7 +241,8 @@ _NODISCARD inline to_chars_result __d2fixed_buffered_n(char* _First, char* const
       const uint32_t __j = __p10bits - __e2;
       // Temporary: __j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in __mulShift_mod1e9. Instead, we can just increase the multipliers.
-      const uint32_t __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT[__POW10_OFFSET[__idx] + __i], static_cast<int32_t>(__j + 8));
+      const uint32_t __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT[__POW10_OFFSET[__idx] + __i],
+        static_cast<int32_t>(__j + 8));
       if (__nonzero) {
         if (_Last - _First < 9) {
           return { _Last, errc::value_too_large };
@@ -439,7 +440,8 @@ _NODISCARD inline to_chars_result __d2exp_buffered_n(char* _First, char* const _
       const uint32_t __j = __p10bits - __e2;
       // Temporary: __j is usually around 128, and by shifting a bit, we push it to 128 or above, which is
       // a slightly faster code path in __mulShift_mod1e9. Instead, we can just increase the multipliers.
-      __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT[__POW10_OFFSET[__idx] + __i], static_cast<int32_t>(__j + 8));
+      __digits = __mulShift_mod1e9(__m2 << 8, __POW10_SPLIT[__POW10_OFFSET[__idx] + __i],
+        static_cast<int32_t>(__j + 8));
       if (__printedDigits != 0) {
         if (__printedDigits + 9 > __precision) {
           __availableDigits = 9;
