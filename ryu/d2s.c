@@ -116,23 +116,23 @@ _NODISCARD inline uint32_t __decimalLength17(const uint64_t __v) {
   // The average output length is 16.38 digits, so we check high-to-low.
   // Function precondition: __v is not an 18, 19, or 20-digit number.
   // (17 digits are sufficient for round-tripping.)
-  _STL_INTERNAL_CHECK(__v < 100000000000000000L);
-  if (__v >= 10000000000000000L) { return 17; }
-  if (__v >= 1000000000000000L) { return 16; }
-  if (__v >= 100000000000000L) { return 15; }
-  if (__v >= 10000000000000L) { return 14; }
-  if (__v >= 1000000000000L) { return 13; }
-  if (__v >= 100000000000L) { return 12; }
-  if (__v >= 10000000000L) { return 11; }
-  if (__v >= 1000000000L) { return 10; }
-  if (__v >= 100000000L) { return 9; }
-  if (__v >= 10000000L) { return 8; }
-  if (__v >= 1000000L) { return 7; }
-  if (__v >= 100000L) { return 6; }
-  if (__v >= 10000L) { return 5; }
-  if (__v >= 1000L) { return 4; }
-  if (__v >= 100L) { return 3; }
-  if (__v >= 10L) { return 2; }
+  _STL_INTERNAL_CHECK(__v < 100000000000000000u);
+  if (__v >= 10000000000000000u) { return 17; }
+  if (__v >= 1000000000000000u) { return 16; }
+  if (__v >= 100000000000000u) { return 15; }
+  if (__v >= 10000000000000u) { return 14; }
+  if (__v >= 1000000000000u) { return 13; }
+  if (__v >= 100000000000u) { return 12; }
+  if (__v >= 10000000000u) { return 11; }
+  if (__v >= 1000000000u) { return 10; }
+  if (__v >= 100000000u) { return 9; }
+  if (__v >= 10000000u) { return 8; }
+  if (__v >= 1000000u) { return 7; }
+  if (__v >= 100000u) { return 6; }
+  if (__v >= 10000u) { return 5; }
+  if (__v >= 1000u) { return 4; }
+  if (__v >= 100u) { return 3; }
+  if (__v >= 10u) { return 2; }
   return 1;
 }
 
