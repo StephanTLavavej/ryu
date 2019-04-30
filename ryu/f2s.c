@@ -288,7 +288,7 @@ _NODISCARD inline to_chars_result _Large_integer_to_chars(char* const _First, ch
   //                   >> right shift >>
 
   constexpr uint32_t _Data_size = 4;
-  uint32_t _Data[_Data_size]{}; // zero-initialized
+  uint32_t _Data[_Data_size]{};
   uint32_t _Maxidx = ((24 + static_cast<uint32_t>(_Exponent2) + 31) / 32) - 1; // index of most significant nonzero element
   _STL_INTERNAL_CHECK(_Maxidx < _Data_size);
 
