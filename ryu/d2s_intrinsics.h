@@ -190,6 +190,7 @@ _NODISCARD inline bool __multipleOfPowerOf5(const uint64_t __value, const uint32
 // Returns true if __value is divisible by 2^__p.
 _NODISCARD inline bool __multipleOfPowerOf2(const uint64_t __value, const uint32_t __p) {
   _STL_INTERNAL_CHECK(__value != 0);
+  _STL_INTERNAL_CHECK(__p < 64);
   // return __builtin_ctzll(__value) >= __p;
   return (__value & ((1ull << __p) - 1)) == 0;
 }
